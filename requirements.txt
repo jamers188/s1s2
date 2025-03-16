@@ -1,6 +1,8 @@
-streamlit
-requests
-beautifulsoup4
-pandas
-matplotlib
-seaborn
+streamlit 
+pandas 
+matplotlib 
+seaborn 
+openai 
+python-dotenv 
+requests 
+numpy
