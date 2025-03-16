@@ -4,10 +4,9 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import os
 import json
-import time
 from datetime import datetime
-import openai
-import re
+import requests
+from time import sleep
 
 # Page configuration
 st.set_page_config(
@@ -24,8 +23,8 @@ if not os.path.exists(RESULTS_DIR):
 class OpenAIPropertyAnalyzer:
     def __init__(self, api_key):
         self.api_key = api_key
-        openai.api_key = api_key
         self.results_dir = RESULTS_DIR
+        self.openai_api_url = "https://api.openai.com/v1/chat/completions"
         
     def get_property_data(self, property_name, max_properties=10):
         """Use OpenAI to extract property data for the specified property"""
@@ -41,69 +40,63 @@ class OpenAIPropertyAnalyzer:
         6. Number of bathrooms (1, 2, 3, etc.)
         7. Location (e.g., Business Bay, Dubai)
         8. Developer name
-        9. Brief description of the property
 
-        For each property, format the response as a JSON object as follows:
-        ```json
-        {
-          "project": "Property project name",
-          "property_type": "Property type",
-          "price": 1000000,
-          "area_sqft": 1200,
-          "bedrooms": "2",
-          "bathrooms": "2",
-          "location": "Location",
-          "developer": "Developer name",
-          "description": "Brief description"
-        }
-        ```
+        Format the response as a JSON array of objects. Each object should represent one property with the fields: project, property_type, price, area_sqft, bedrooms, bathrooms, location, developer.
 
-        I need the response to be ONLY valid JSON objects in an array, nothing else. Use the most up-to-date information available.
+        Return ONLY valid JSON, no other text.
         """
         
         try:
-            # Make API call to OpenAI
-            response = openai.ChatCompletion.create(
-                model="gpt-4",  # or gpt-3.5-turbo if preferred
-                messages=[
-                    {"role": "system", "content": "You are a helpful assistant that provides accurate real estate data in Dubai. You output only valid JSON without any additional text."},
+            # API call to OpenAI
+            headers = {
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json"
+            }
+            
+            data = {
+                "model": "gpt-4",  # or "gpt-3.5-turbo" for a less expensive option
+                "messages": [
+                    {"role": "system", "content": "You provide accurate property data in JSON format without additional text."},
                     {"role": "user", "content": prompt}
                 ],
-                temperature=0.1,  # Low temperature for more focused, deterministic output
-                max_tokens=2000
+                "temperature": 0.1
+            }
+            
+            response = requests.post(
+                self.openai_api_url,
+                headers=headers,
+                json=data
             )
             
-            # Extract content from the response
-            content = response.choices[0].message.content.strip()
+            if response.status_code != 200:
+                st.error(f"Error from OpenAI API: {response.status_code} - {response.text}")
+                return []
             
-            # Extract JSON from the content (in case there's any extra text)
-            json_match = re.search(r'```json(.*?)```', content, re.DOTALL)
-            if json_match:
-                json_str = json_match.group(1).strip()
-            else:
-                json_str = content
+            # Parse the response
+            response_data = response.json()
+            content = response_data["choices"][0]["message"]["content"].strip()
             
-            # Clean up JSON string
-            json_str = json_str.replace('```json', '').replace('```', '').strip()
+            # Clean up JSON content
+            if content.startswith("```json"):
+                content = content[7:]
+            if content.endswith("```"):
+                content = content[:-3]
+                
+            content = content.strip()
             
-            # Parse JSON data
+            # Parse JSON
             try:
-                property_data = json.loads(json_str)
+                property_data = json.loads(content)
                 if not isinstance(property_data, list):
                     property_data = [property_data]
             except json.JSONDecodeError:
-                # If the JSON is not an array, try wrapping it
-                try:
-                    json_str = f"[{json_str}]"
-                    property_data = json.loads(json_str)
-                except json.JSONDecodeError:
-                    st.error(f"Failed to parse property data from OpenAI response: {content}")
-                    return []
+                st.error(f"Failed to parse JSON from response: {content}")
+                return []
             
             return property_data
-        
+            
         except Exception as e:
-            st.error(f"Error getting property data from OpenAI: {str(e)}")
+            st.error(f"Error getting property data: {str(e)}")
             return []
     
     def save_to_csv(self, properties, property_name):
@@ -236,22 +229,7 @@ class OpenAIPropertyAnalyzer:
                 figures['bedrooms'] = fig_bed
         except Exception as e:
             st.error(f"Error generating bedroom chart: {e}")
-        
-        # Project breakdown
-        try:
-            if 'project' in df.columns and len(df['project'].unique()) > 1:
-                fig_project, ax_project = plt.subplots(figsize=(10, 5))
-                project_counts = df['project'].value_counts()
-                project_counts.plot(kind='bar', ax=ax_project)
-                ax_project.set_title(f'Projects in {property_name}')
-                ax_project.set_xlabel('Project')
-                ax_project.set_ylabel('Count')
-                plt.xticks(rotation=45)
-                plt.tight_layout()
-                figures['projects'] = fig_project
-        except Exception as e:
-            st.error(f"Error generating project chart: {e}")
-        
+            
         return figures
     
     def get_property_comparison(self, property_names):
@@ -275,64 +253,40 @@ class OpenAIPropertyAnalyzer:
         """
         
         try:
-            # Make API call to OpenAI
-            response = openai.ChatCompletion.create(
-                model="gpt-4",  # or gpt-3.5-turbo if preferred
-                messages=[
+            # API call to OpenAI
+            headers = {
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json"
+            }
+            
+            data = {
+                "model": "gpt-4",  # or "gpt-3.5-turbo" for a less expensive option
+                "messages": [
                     {"role": "system", "content": "You are a Dubai real estate expert providing detailed property comparisons."},
                     {"role": "user", "content": prompt}
                 ],
-                temperature=0.5,
-                max_tokens=2000
+                "temperature": 0.5
+            }
+            
+            response = requests.post(
+                self.openai_api_url,
+                headers=headers,
+                json=data
             )
             
-            # Extract content from the response
-            content = response.choices[0].message.content.strip()
+            if response.status_code != 200:
+                st.error(f"Error from OpenAI API: {response.status_code} - {response.text}")
+                return "Failed to generate comparison. Please try again later."
+            
+            # Parse the response
+            response_data = response.json()
+            content = response_data["choices"][0]["message"]["content"].strip()
+            
             return content
             
         except Exception as e:
             st.error(f"Error generating property comparison: {str(e)}")
             return "Failed to generate comparison. Please try again later."
-    
-    def get_investment_advice(self, property_name, budget=None):
-        """Get investment advice for a specific property using OpenAI"""
-        budget_text = f"with a budget of AED {budget}" if budget else ""
-        
-        prompt = f"""
-        Provide detailed investment advice for {property_name} in Dubai {budget_text}.
-        
-        Include the following in your analysis:
-        1. Current market conditions for this property/area
-        2. Expected ROI (rental yield and capital appreciation)
-        3. Best unit types to invest in (studio, 1BR, 2BR, etc.)
-        4. Payment plans available (if known)
-        5. Risks and considerations
-        6. Alternative investment options in similar price range
-        7. Long-term outlook (3-5 years)
-        
-        Format your response in markdown with clear headings and bullet points for easy readability.
-        Provide factual information with specific numbers where available.
-        """
-        
-        try:
-            # Make API call to OpenAI
-            response = openai.ChatCompletion.create(
-                model="gpt-4",  # or gpt-3.5-turbo if preferred
-                messages=[
-                    {"role": "system", "content": "You are a Dubai real estate investment advisor providing detailed market analysis and investment advice."},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.5,
-                max_tokens=2000
-            )
-            
-            # Extract content from the response
-            content = response.choices[0].message.content.strip()
-            return content
-            
-        except Exception as e:
-            st.error(f"Error generating investment advice: {str(e)}")
-            return "Failed to generate investment advice. Please try again later."
 
 # Helper functions
 def format_currency(value):
@@ -347,6 +301,50 @@ def format_area(value):
         return "N/A"
     return f"{value:,.2f} sq.ft"
 
+# Sample property data (fallback if API fails)
+SAMPLE_DATA = [
+    {
+        "project": "Damac Safa Two",
+        "property_type": "Apartment",
+        "price": 1900000,
+        "area_sqft": 753,
+        "bedrooms": "1",
+        "bathrooms": "2",
+        "location": "Business Bay, Dubai",
+        "developer": "Damac Properties"
+    },
+    {
+        "project": "Damac Safa Two",
+        "property_type": "Apartment",
+        "price": 2700000,
+        "area_sqft": 1294,
+        "bedrooms": "2",
+        "bathrooms": "3",
+        "location": "Business Bay, Dubai",
+        "developer": "Damac Properties"
+    },
+    {
+        "project": "Damac Safa One",
+        "property_type": "Apartment",
+        "price": 2200000,
+        "area_sqft": 1001,
+        "bedrooms": "1",
+        "bathrooms": "2",
+        "location": "Business Bay, Dubai",
+        "developer": "Damac Properties"
+    },
+    {
+        "project": "Damac Safa One",
+        "property_type": "Apartment",
+        "price": 3100000,
+        "area_sqft": 1294,
+        "bedrooms": "2",
+        "bathrooms": "3",
+        "location": "Business Bay, Dubai",
+        "developer": "Damac Properties"
+    }
+]
+
 # Main Streamlit app
 def main():
     st.title("Property Analyzer with AI")
@@ -354,9 +352,10 @@ def main():
     
     # Check for OpenAI API key
     api_key = st.sidebar.text_input("Enter OpenAI API Key", type="password")
+    use_sample_data = st.sidebar.checkbox("Use sample data (if API fails)", value=False)
     
-    if not api_key:
-        st.warning("Please enter your OpenAI API key in the sidebar to continue.")
+    if not api_key and not use_sample_data:
+        st.warning("Please enter your OpenAI API key in the sidebar to continue, or check 'Use sample data'.")
         st.info("You need an OpenAI API key to use this application. You can get one from [https://platform.openai.com/account/api-keys](https://platform.openai.com/account/api-keys)")
         return
     
@@ -364,22 +363,27 @@ def main():
     analyzer = OpenAIPropertyAnalyzer(api_key)
     
     # Create tabs
-    tab1, tab2, tab3 = st.tabs(["Property Analysis", "Property Comparison", "Investment Advice"])
+    tab1, tab2 = st.tabs(["Property Analysis", "Property Comparison"])
     
     with tab1:
         st.header("Analyze Property Data")
         
         with st.form("property_form"):
             property_name = st.text_input("Enter Property Name or Area", "Damac Safa Two")
-            max_properties = st.slider("Maximum Properties to Analyze", min_value=5, max_value=20, value=10,
+            max_properties = st.slider("Maximum Properties to Analyze", min_value=5, max_value=15, value=8,
                                      help="Higher values will provide more comprehensive data but may take longer to process.")
             
             analyze_button = st.form_submit_button("Analyze Property")
         
-        if analyze_button and property_name:
+        if analyze_button and (property_name or use_sample_data):
             with st.spinner(f"Analyzing {property_name}... This may take a minute"):
-                # Get property data from OpenAI
-                properties = analyzer.get_property_data(property_name, max_properties)
+                # Get property data from OpenAI or use sample data
+                if use_sample_data:
+                    properties = SAMPLE_DATA
+                    sleep(1)  # Simulate API call delay
+                    st.info("Using sample data instead of API call")
+                else:
+                    properties = analyzer.get_property_data(property_name, max_properties)
                 
                 if properties:
                     st.success(f"Analysis complete! Found data for {len(properties)} properties in {property_name}")
@@ -485,38 +489,125 @@ def main():
                             )
                 else:
                     st.error(f"No properties found for {property_name}. Please try another property name or area.")
+                    if not use_sample_data:
+                        st.info("Try checking 'Use sample data' in the sidebar if the API is not working.")
     
     with tab2:
         st.header("Compare Properties")
         
         property_list = st.text_input("Enter properties to compare (comma-separated)", "Damac Safa One, Damac Safa Two")
+        use_sample_comparison = st.checkbox("Use sample comparison (if API fails)", value=False)
         
         if st.button("Generate Comparison"):
-            if property_list:
+            if property_list or use_sample_comparison:
                 properties_to_compare = [p.strip() for p in property_list.split(",") if p.strip()]
                 
-                if len(properties_to_compare) < 2:
+                if len(properties_to_compare) < 2 and not use_sample_comparison:
                     st.warning("Please enter at least two properties to compare.")
                 else:
                     with st.spinner("Generating property comparison..."):
-                        comparison = analyzer.get_property_comparison(properties_to_compare)
+                        if use_sample_comparison:
+                            comparison = """
+# Comparison: Damac Safa One vs. Damac Safa Two
+
+## Price Ranges and Average Prices
+
+### Damac Safa One
+- Studio: AED 1.2M - 1.5M (Average: AED 1.35M)
+- 1 Bedroom: AED 1.8M - 2.3M (Average: AED 2.1M)
+- 2 Bedrooms: AED 2.7M - 3.5M (Average: AED 3.1M)
+- 3 Bedrooms: AED 4.2M - 5.5M (Average: AED 4.7M)
+
+### Damac Safa Two
+- Studio: AED 1.1M - 1.4M (Average: AED 1.25M)
+- 1 Bedroom: AED 1.65M - 2.1M (Average: AED 1.9M)
+- 2 Bedrooms: AED 2.45M - 3.2M (Average: AED 2.85M)
+- 3 Bedrooms: AED 3.8M - 5.2M (Average: AED 4.5M)
+
+## Return on Investment Potential
+
+### Damac Safa One
+- Estimated Rental Yield: 5.8-6.2%
+- Expected Capital Appreciation: 7-9% annually
+- Premium positioning may result in higher long-term value retention
+
+### Damac Safa Two
+- Estimated Rental Yield: 6.2-6.5%
+- Expected Capital Appreciation: 6-8% annually
+- More affordable entry point may attract a broader rental market
+
+## Location Advantages and Disadvantages
+
+### Damac Safa One
+**Advantages:**
+- Prime location in Business Bay
+- Closer proximity to Dubai Mall and Burj Khalifa
+- Better views of downtown Dubai skyline
+- More established surrounding infrastructure
+
+**Disadvantages:**
+- Higher traffic congestion during peak hours
+- More construction activity in immediate vicinity
+
+### Damac Safa Two
+**Advantages:**
+- Newer development area with growth potential
+- Less congested access routes
+- Slightly larger unit sizes on average
+- More green spaces planned nearby
+
+**Disadvantages:**
+- Slightly farther from key downtown attractions
+- Some amenities still under development
+
+## Build Quality and Amenities
+
+### Damac Safa One
+- Designed by international architects with luxury finishes
+- Features include: Infinity pool, spa, fitness center, concierge services
+- Smart home technology integration
+- Higher ceiling heights (2.9m)
+
+### Damac Safa Two
+- Similar build quality but with newer design concepts
+- Features include: Rooftop garden, co-working spaces, children's play areas
+- More emphasis on outdoor recreational spaces
+- Modern eco-friendly features
+
+## Developer Reputation
+
+### Damac Properties (Both Developments)
+- Well-established developer with 20+ years in Dubai market
+- Known for luxury developments with strong build quality
+- Generally good delivery record with occasional delays
+- Strong after-sales support and property management
+
+## Future Growth Potential
+
+### Damac Safa One
+- Established area with limited new supply planned
+- Higher initial investment but potentially more stable growth
+- Better short-term rental prospects
+
+### Damac Safa Two
+- Located in an area with more future development potential
+- Potentially higher medium to long-term appreciation
+- More affected by overall market supply trends
+
+## Summary
+
+**Damac Safa One** is better suited for investors seeking established location advantages with premium positioning and immediate rental returns.
+
+**Damac Safa Two** offers better value for mid-term investors, with slightly higher yields and greater appreciation potential as the surrounding area develops further.
+"""
+                            sleep(2)  # Simulate API call delay
+                            st.info("Using sample comparison instead of API call")
+                        else:
+                            comparison = analyzer.get_property_comparison(properties_to_compare)
+                        
                         st.markdown(comparison)
             else:
-                st.warning("Please enter properties to compare.")
-    
-    with tab3:
-        st.header("Get Investment Advice")
-        
-        property_for_advice = st.text_input("Enter property or area for investment advice", "Damac Safa Two")
-        budget = st.number_input("Your budget (AED)", min_value=0, value=2000000, step=100000)
-        
-        if st.button("Get Investment Advice"):
-            if property_for_advice:
-                with st.spinner("Generating investment advice..."):
-                    advice = analyzer.get_investment_advice(property_for_advice, budget if budget > 0 else None)
-                    st.markdown(advice)
-            else:
-                st.warning("Please enter a property or area.")
+                st.warning("Please enter properties to compare or use sample comparison.")
 
 if __name__ == "__main__":
     main()
