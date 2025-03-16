@@ -8,6 +8,7 @@ import os
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+import re
 
 # Set page configuration
 st.set_page_config(
@@ -278,6 +279,18 @@ st.markdown("""
         padding: 15px;
         background-color: white;
     }
+    
+    /* Listing days badge */
+    .listing-badge {
+        display: inline-block;
+        padding: 2px 6px;
+        background-color: #e0e7ff;
+        color: #1e40af;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 600;
+        margin-left: 6px;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -354,7 +367,7 @@ SAFA_TWO_DATA = [
     {"project": "Safa Two", "property_type": "Apartment", "price": 2700000, "area_sqft": 1124, "bedrooms": "2", "bathrooms": "3", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "Luxurious | Burj Khalifa View | Listed 10 days ago"},
     {"project": "Safa Two", "property_type": "Apartment", "price": 2700000, "area_sqft": 1294, "bedrooms": "2", "bathrooms": "3", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "Listed 2 Months ago"},
     {"project": "Safa Two", "property_type": "Apartment", "price": 2850000, "area_sqft": 1130, "bedrooms": "2", "bathrooms": "3", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "Welcome agents | Price is negotiable | Listed 23 Days ago"},
-    {"project": "Safa Two", "property_type": "Apartment", "price": 2850000, "area_sqft": 1557, "bedrooms": "2", "bathrooms": "3", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "BELOW ORIGINAL PRICE | HUGE PREMIUM LAYOUT | Listed 2 MOnths ago"},
+    {"project": "Safa Two", "property_type": "Apartment", "price": 2850000, "area_sqft": 1557, "bedrooms": "2", "bathrooms": "3", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "BELOW ORIGINAL PRICE | HUGE PREMIUM LAYOUT | Listed 2 Months ago"},
     {"project": "Safa Two", "property_type": "Apartment", "price": 3200000, "area_sqft": 1399, "bedrooms": "2", "bathrooms": "3", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "Provident Estate | Listed 1 Month ago"},
     {"project": "Safa Two", "property_type": "Apartment", "price": 3600000, "area_sqft": 1426, "bedrooms": "2", "bathrooms": "3", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "Corner 2 beds, payment plan, Downtown view | Listed 1 Month ago"},
     
@@ -412,9 +425,9 @@ SAFA_ONE_DATA = [
     
     # 4 Bedroom properties
     {"project": "Safa One", "property_type": "Apartment", "price": 7923000, "area_sqft": 2870, "bedrooms": "4", "bathrooms": "4", "location": "Al Safa 1, Dubai", "developer": "Damac Properties", "description": "Rare 4 Bed Duplex Townhouse | Listed 6 months ago"},
-    {"project": "Safa One", "property_type": "Apartment", "price": 30000000, "area_sqft": 6357, "bedrooms": "4", "bathrooms": "6", "location": "Al Safa 1, Dubai", "developer": "Damac Properties", "description": "Full Floor Penthouse | Panoramic View | Listed 8 Days ago"}
-    {"project": "Safa One", "property_type": "Apartment", "price": 25827000, "area_sqft": 6357, "bedrooms": "4", "bathrooms": "5", "location": "Al Safa 1, Dubai", "developer": "Damac Properties", "description": "Full Floor Penthouse | Panoramic View | Listed 8 Days ago"}
-    {"project": "Safa One", "property_type": "Apartment", "price": 7944000, "area_sqft": 2877, "bedrooms": "4", "bathrooms": "5", "location": "Al Safa 1, Dubai", "developer": "Damac Properties", "description": "Full Floor Penthouse | Panoramic View | Listed 1 Day ago"}
+    {"project": "Safa One", "property_type": "Apartment", "price": 30000000, "area_sqft": 6357, "bedrooms": "4", "bathrooms": "6", "location": "Al Safa 1, Dubai", "developer": "Damac Properties", "description": "Full Floor Penthouse | Panoramic View | Listed 8 Days ago"},
+    {"project": "Safa One", "property_type": "Apartment", "price": 25827000, "area_sqft": 6357, "bedrooms": "4", "bathrooms": "5", "location": "Al Safa 1, Dubai", "developer": "Damac Properties", "description": "Full Floor Penthouse | Panoramic View | Listed 8 Days ago"},
+    {"project": "Safa One", "property_type": "Apartment", "price": 7944000, "area_sqft": 2877, "bedrooms": "4", "bathrooms": "5", "location": "Al Safa 1, Dubai", "developer": "Damac Properties", "description": "Full Floor Penthouse | Panoramic View | Listed 1 Day ago"},
     {"project": "Safa One", "property_type": "Apartment", "price": 7923000, "area_sqft": 2870, "bedrooms": "4", "bathrooms": "5", "location": "Al Safa 1, Dubai", "developer": "Damac Properties", "description": "Full Floor Penthouse | Panoramic View | Listed 11 Days ago"}
 ]
 
@@ -440,6 +453,25 @@ PROJECT_INFO = {
     }
 }
 
+def extract_listing_days(description):
+    """Extract the listing days information from the property description"""
+    listing_pattern = r'[Ll]isted\s+(\d+)\s+([Dd]ays?|[Mm]onths?|[Ww]eeks?)\s+[Aa]go'
+    match = re.search(listing_pattern, description)
+    
+    if match:
+        number = match.group(1)
+        time_unit = match.group(2).lower()
+        
+        # Standardize the time unit
+        if 'day' in time_unit:
+            return f"{number} days"
+        elif 'week' in time_unit:
+            return f"{number} weeks"
+        elif 'month' in time_unit:
+            return f"{number} months"
+    
+    return None
+
 def analyze_data(property_data):
     """Analyze the property data"""
     # Convert to DataFrame
@@ -447,6 +479,9 @@ def analyze_data(property_data):
     
     # Calculate price per sqft
     df['price_per_sqft'] = df['price'] / df['area_sqft']
+    
+    # Extract listing days
+    df['listing_days'] = df['description'].apply(extract_listing_days)
     
     # Basic statistics overall
     stats_overall = {
@@ -495,13 +530,17 @@ def analyze_data(property_data):
     bathroom_stats['bedroom_order'] = bathroom_stats['bedrooms'].map(bedroom_order)
     bathroom_stats = bathroom_stats.sort_values(['bedroom_order', 'bathrooms']).drop('bedroom_order', axis=1)
     
+    # Statistics by listing days
+    listing_days_counts = df['listing_days'].value_counts().reset_index()
+    listing_days_counts.columns = ['listing_period', 'count']
+    
     return {
         'dataframe': df,
         'stats_overall': stats_overall,
         'bedroom_stats': bedroom_stats,
-        'bathroom_stats': bathroom_stats
+        'bathroom_stats': bathroom_stats,
+        'listing_days_stats': listing_days_counts
     }
-
 
 def format_currency(value):
     """Format currency values for display"""
@@ -649,12 +688,40 @@ def display_project_analysis(project_name, property_data):
     st.table(simplified_df)
     st.markdown('</div>', unsafe_allow_html=True)
     
+    # Listing days analysis
+    st.markdown(f'<div class="sub-header">Listing Days Analysis</div>', unsafe_allow_html=True)
+    
+    # Create listing days chart
+    if not analysis_results['listing_days_stats'].empty:
+        fig = px.bar(
+            analysis_results['listing_days_stats'], 
+            x='listing_period', 
+            y='count',
+            color_discrete_sequence=['#0d3b66'],
+            labels={'listing_period': 'Listing Period', 'count': 'Number of Properties'},
+            title=f'Distribution of Properties by Listing Period in {project_name}'
+        )
+        
+        fig.update_layout(
+            font_family="Arial",
+            title_font_size=18,
+            title_font_color='#1E3A8A',
+            plot_bgcolor='#f8fafc',
+            paper_bgcolor='white',
+            height=400,
+            xaxis_title="Listing Period",
+            yaxis_title="Number of Properties"
+        )
+        
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.info("Listing days data not available for analysis.")
     
     # Property listings
     st.markdown(f'<div class="sub-header">Property Listings</div>', unsafe_allow_html=True)
     
     # Add filters
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
     with col1:
         bedroom_filter = st.selectbox(f"Filter {project_name} by Bedrooms", 
                                      ["All"] + list(analysis_results['dataframe']['bedrooms'].unique()),
@@ -663,11 +730,56 @@ def display_project_analysis(project_name, property_data):
         price_sort = st.selectbox(f"Sort {project_name} by Price", 
                                  ["Low to High", "High to Low"],
                                  key=f"{project_name}_price_sort")
+    with col3:
+        listing_age_filter = st.selectbox(f"Filter by Listing Age", 
+                               ["All", "Last Week", "Last Month", "Last 3 Months", "Older than 3 Months"],
+                               key=f"{project_name}_listing_filter")
     
     # Apply filters and sorting
     filtered_df = analysis_results['dataframe']
     if bedroom_filter != "All":
         filtered_df = filtered_df[filtered_df['bedrooms'] == bedroom_filter]
+    
+    # Apply listing age filter
+    if listing_age_filter != "All":
+        def filter_by_listing_age(listing_days):
+            if pd.isna(listing_days):
+                return False
+            
+            # Extract number and period
+            parts = listing_days.split()
+            if len(parts) != 2:
+                return False
+                
+            number = int(parts[0])
+            period = parts[1]
+            
+            if listing_age_filter == "Last Week":
+                if period == "days":
+                    return number <= 7
+                return False
+            elif listing_age_filter == "Last Month":
+                if period == "days":
+                    return number <= 30
+                elif period == "weeks":
+                    return number <= 4
+                return False
+            elif listing_age_filter == "Last 3 Months":
+                if period == "days":
+                    return number <= 90
+                elif period == "weeks":
+                    return number <= 12
+                elif period == "months":
+                    return number <= 3
+                return False
+            elif listing_age_filter == "Older than 3 Months":
+                if period == "months":
+                    return number > 3
+                return False
+            
+            return True
+        
+        filtered_df = filtered_df[filtered_df['listing_days'].apply(filter_by_listing_age)]
     
     if price_sort == "Low to High":
         filtered_df = filtered_df.sort_values('price')
@@ -680,11 +792,59 @@ def display_project_analysis(project_name, property_data):
     display_df['area_sqft'] = display_df['area_sqft'].apply(format_area)
     display_df['price_per_sqft'] = display_df['price_per_sqft'].apply(lambda x: f"AED {x:,.0f}")
     
-    # Select columns for display
-    display_df = display_df[['bedrooms', 'bathrooms', 'price', 'area_sqft', 'price_per_sqft', 'description']]
-    display_df.columns = ['Bedrooms', 'Bathrooms', 'Price', 'Area', 'Price/sq.ft', 'Description']
+    # Format description to highlight listing days
+    def highlight_listing_days(description):
+        listing_pattern = r'([Ll]isted\s+\d+\s+[Dd]ays?|[Mm]onths?|[Ww]eeks?\s+[Aa]go)'
+        if re.search(listing_pattern, description):
+            highlighted = re.sub(listing_pattern, r'<span class="listing-badge">\1</span>', description)
+            return highlighted
+        return description
     
-    st.dataframe(display_df, use_container_width=True)
+    display_df['features'] = display_df['description'].apply(lambda x: x.replace(' | ', '<br>• '))
+    display_df['features'] = display_df['features'].apply(lambda x: '• ' + x)
+    display_df['features'] = display_df['features'].apply(highlight_listing_days)
+    
+    # Select columns for display
+    display_df = display_df[['bedrooms', 'bathrooms', 'price', 'area_sqft', 'price_per_sqft', 'features', 'listing_days']]
+    display_df.columns = ['Bedrooms', 'Bathrooms', 'Price', 'Area', 'Price/sq.ft', 'Features', 'Listing Age']
+    
+    # Display the data with html formatting enabled
+    st.markdown('<div class="dataframe-container">', unsafe_allow_html=True)
+    
+    # If filtered dataframe is empty, show a message
+    if display_df.empty:
+        st.warning(f"No properties match your current filters in {project_name}. Try adjusting your selection.")
+    else:
+        # Format and display the dataframe
+        st.write(f"Showing {len(display_df)} properties")
+        
+        # Create a custom HTML table for better display of features
+        html_table = '<table class="dataframe" style="width:100%;">'
+        
+        # Add header
+        html_table += '<thead><tr>'
+        for col in display_df.columns:
+            if col != 'Listing Age':  # We'll incorporate this into Features
+                html_table += f'<th>{col}</th>'
+        html_table += '</tr></thead>'
+        
+        # Add rows
+        html_table += '<tbody>'
+        for _, row in display_df.iterrows():
+            html_table += '<tr>'
+            for col in display_df.columns:
+                if col == 'Listing Age':
+                    continue  # Skip as we're incorporating this into Features
+                elif col == 'Features':
+                    html_table += f'<td style="max-width:300px;">{row[col]}</td>'
+                else:
+                    html_table += f'<td>{row[col]}</td>'
+            html_table += '</tr>'
+        html_table += '</tbody></table>'
+        
+        st.markdown(html_table, unsafe_allow_html=True)
+    
+    st.markdown('</div>', unsafe_allow_html=True)
 
 def display_comparison(safa_one_analysis, safa_two_analysis):
     """Display comparison between Safa One and Safa Two"""
@@ -779,6 +939,44 @@ def display_comparison(safa_one_analysis, safa_two_analysis):
     
     st.plotly_chart(fig, use_container_width=True)
     
+    # Listing age comparison
+    st.markdown('<h3 style="color: #1E3A8A; margin-top: 20px;">Listing Age Comparison</h3>', unsafe_allow_html=True)
+    
+    # Create a combined dataframe for listing age
+    safa_one_listing = safa_one_analysis['listing_days_stats'].copy()
+    safa_one_listing['Project'] = 'Safa One'
+    
+    safa_two_listing = safa_two_analysis['listing_days_stats'].copy()
+    safa_two_listing['Project'] = 'Safa Two'
+    
+    combined_listing = pd.concat([safa_one_listing, safa_two_listing])
+    
+    if not combined_listing.empty:
+        fig = px.bar(
+            combined_listing,
+            x='listing_period',
+            y='count',
+            color='Project',
+            barmode='group',
+            title='Distribution of Listings by Age',
+            labels={'listing_period': 'Listing Period', 'count': 'Number of Properties'},
+            color_discrete_map={'Safa One': '#1E3A8A', 'Safa Two': '#3B82F6'}
+        )
+        
+        fig.update_layout(
+            font_family="Arial",
+            title_font_size=18,
+            title_font_color='#1E3A8A',
+            legend_title_font_color='#1E3A8A',
+            plot_bgcolor='#EFF6FF',
+            paper_bgcolor='white',
+            height=450
+        )
+        
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.info("Listing age data not available for comparison.")
+    
     # Investment comparison
     st.markdown('<h3 style="color: #1E3A8A; margin-top: 20px;">Investment Comparison</h3>', unsafe_allow_html=True)
     
@@ -796,18 +994,18 @@ def display_comparison(safa_one_analysis, safa_two_analysis):
         'Safa One': [
             PROJECT_INFO['Safa One']['delivery_date'],
             PROJECT_INFO['Safa One']['payment_plan'],
-            format_currency(safa_one_analysis['bedroom_stats'].loc[safa_one_analysis['bedroom_stats']['bedrooms'] == '1', 'avg_price'].values[0]),
-            format_currency(safa_one_analysis['bedroom_stats'].loc[safa_one_analysis['bedroom_stats']['bedrooms'] == '2', 'avg_price'].values[0]),
-            format_currency(safa_one_analysis['bedroom_stats'].loc[safa_one_analysis['bedroom_stats']['bedrooms'] == '3', 'avg_price'].values[0]),
+            format_currency(safa_one_analysis['bedroom_stats'].loc[safa_one_analysis['bedroom_stats']['bedrooms'] == '1', 'avg_price'].values[0]) if '1' in safa_one_analysis['bedroom_stats']['bedrooms'].values else 'N/A',
+            format_currency(safa_one_analysis['bedroom_stats'].loc[safa_one_analysis['bedroom_stats']['bedrooms'] == '2', 'avg_price'].values[0]) if '2' in safa_one_analysis['bedroom_stats']['bedrooms'].values else 'N/A',
+            format_currency(safa_one_analysis['bedroom_stats'].loc[safa_one_analysis['bedroom_stats']['bedrooms'] == '3', 'avg_price'].values[0]) if '3' in safa_one_analysis['bedroom_stats']['bedrooms'].values else 'N/A',
             f"AED {safa_one_stats['min_price_per_sqft']:,.0f} - {safa_one_stats['max_price_per_sqft']:,.0f}",
             PROJECT_INFO['Safa One']['location']
         ],
         'Safa Two': [
             PROJECT_INFO['Safa Two']['delivery_date'],
             PROJECT_INFO['Safa Two']['payment_plan'],
-            format_currency(safa_two_analysis['bedroom_stats'].loc[safa_two_analysis['bedroom_stats']['bedrooms'] == '1', 'avg_price'].values[0]),
-            format_currency(safa_two_analysis['bedroom_stats'].loc[safa_two_analysis['bedroom_stats']['bedrooms'] == '2', 'avg_price'].values[0]),
-            format_currency(safa_two_analysis['bedroom_stats'].loc[safa_two_analysis['bedroom_stats']['bedrooms'] == '3', 'avg_price'].values[0]),
+            format_currency(safa_two_analysis['bedroom_stats'].loc[safa_two_analysis['bedroom_stats']['bedrooms'] == '1', 'avg_price'].values[0]) if '1' in safa_two_analysis['bedroom_stats']['bedrooms'].values else 'N/A',
+            format_currency(safa_two_analysis['bedroom_stats'].loc[safa_two_analysis['bedroom_stats']['bedrooms'] == '2', 'avg_price'].values[0]) if '2' in safa_two_analysis['bedroom_stats']['bedrooms'].values else 'N/A',
+            format_currency(safa_two_analysis['bedroom_stats'].loc[safa_two_analysis['bedroom_stats']['bedrooms'] == '3', 'avg_price'].values[0]) if '3' in safa_two_analysis['bedroom_stats']['bedrooms'].values else 'N/A',
             f"AED {safa_two_stats['min_price_per_sqft']:,.0f} - {safa_two_stats['max_price_per_sqft']:,.0f}",
             PROJECT_INFO['Safa Two']['location']
         ]
@@ -937,6 +1135,58 @@ def main():
                 safa_one_stats['avg_price_per_sqft'],
                 safa_two_stats['avg_price_per_sqft']
             ), unsafe_allow_html=True)
+        
+        # Listing age analysis
+        st.markdown('<div class="sub-header">Listing Age Analysis</div>', unsafe_allow_html=True)
+        
+        # Create listing age distribution charts
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown('<h4 style="color: #1E3A8A; text-align: center;">Safa One Listings by Age</h4>', unsafe_allow_html=True)
+            
+            if not safa_one_analysis['listing_days_stats'].empty:
+                fig1 = px.pie(
+                    safa_one_analysis['listing_days_stats'],
+                    values='count',
+                    names='listing_period',
+                    title='Safa One Listings by Age',
+                    color_discrete_sequence=px.colors.sequential.Blues_r
+                )
+                
+                fig1.update_layout(
+                    font_family="Arial",
+                    title_font_color='#1E3A8A',
+                    legend_title_text='Listing Period',
+                    height=400
+                )
+                
+                st.plotly_chart(fig1, use_container_width=True)
+            else:
+                st.info("Listing age data not available for Safa One.")
+        
+        with col2:
+            st.markdown('<h4 style="color: #1E3A8A; text-align: center;">Safa Two Listings by Age</h4>', unsafe_allow_html=True)
+            
+            if not safa_two_analysis['listing_days_stats'].empty:
+                fig2 = px.pie(
+                    safa_two_analysis['listing_days_stats'],
+                    values='count',
+                    names='listing_period',
+                    title='Safa Two Listings by Age',
+                    color_discrete_sequence=px.colors.sequential.Blues_r
+                )
+                
+                fig2.update_layout(
+                    font_family="Arial",
+                    title_font_color='#1E3A8A',
+                    legend_title_text='Listing Period',
+                    height=400
+                )
+                
+                st.plotly_chart(fig2, use_container_width=True)
+            else:
+                st.info("Listing age data not available for Safa Two.")
     
     # Safa One tab
     with tab_safa_one:
@@ -976,6 +1226,7 @@ def main():
                 <li><strong>Price Points:</strong> Safa Two offers more affordable entry points with studios starting from AED 949K, while Safa One commands premium pricing but may offer stronger appreciation potential.</li>
                 <li><strong>Unit Sizes:</strong> On average, Safa One units are more spacious, particularly in the 2-3 bedroom categories, potentially appealing to end-users and long-term residents.</li>
                 <li><strong>Luxury Appeal:</strong> Both developments feature de GRISOGONO interiors, but Safa One's hanging gardens concept provides a unique selling proposition in the luxury segment.</li>
+                <li><strong>Listing Activity:</strong> Analyzing the listing age distribution helps gauge market interest and turnover rates for both projects.</li>
             </ul>
         </div>
         """, unsafe_allow_html=True)
@@ -999,20 +1250,22 @@ def main():
     col1, col2 = st.columns(2)
     
     with col1:
-        st.download_button(
-            label="Download Safa One Data",
-            data=open(safa_one_path, 'rb').read(),
-            file_name="safa_one_properties.csv",
-            mime="text/csv"
-        )
+        with open(safa_one_path, 'rb') as f:
+            st.download_button(
+                label="Download Safa One Data",
+                data=f.read(),
+                file_name="safa_one_properties.csv",
+                mime="text/csv"
+            )
     
     with col2:
-        st.download_button(
-            label="Download Safa Two Data",
-            data=open(safa_two_path, 'rb').read(),
-            file_name="safa_two_properties.csv",
-            mime="text/csv"
-        )
+        with open(safa_two_path, 'rb') as f:
+            st.download_button(
+                label="Download Safa Two Data",
+                data=f.read(),
+                file_name="safa_two_properties.csv",
+                mime="text/csv"
+            )
 
 # Run the Streamlit app
 if __name__ == "__main__":
