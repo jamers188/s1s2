@@ -284,34 +284,6 @@ def main():
     
     st.table(bathroom_stats)
     
-    # Generate and display visualizations
-    st.header("Visualizations")
-    figures = generate_visualizations(analysis_results)
-    
-    # Display price by bedroom chart
-    if 'price_by_bedroom' in figures:
-        st.subheader("Price Distribution by Bedroom Type")
-        st.pyplot(figures['price_by_bedroom'])
-    
-    # Display area by bedroom chart
-    if 'area_by_bedroom' in figures:
-        st.subheader("Area Distribution by Bedroom Type")
-        st.pyplot(figures['area_by_bedroom'])
-    
-    # Display price per sq.ft by bedroom chart
-    if 'ppsf_by_bedroom' in figures:
-        st.subheader("Price per Sq.Ft by Bedroom Type")
-        st.pyplot(figures['ppsf_by_bedroom'])
-    
-    # Display price per sq.ft distribution chart
-    if 'ppsf_distribution' in figures:
-        st.subheader("Distribution of Price per Sq.Ft")
-        st.pyplot(figures['ppsf_distribution'])
-    
-    # Display price vs. area scatter plot
-    if 'price_vs_area' in figures:
-        st.subheader("Price vs. Area")
-        st.pyplot(figures['price_vs_area'])
     
     # Property listings
     st.header("Property Listings")
