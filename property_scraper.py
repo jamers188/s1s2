@@ -9,142 +9,138 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-# Enhanced CSS styling
+# Page configuration
 st.set_page_config(
     page_title="Damac Safa Properties Analysis",
     page_icon="🏢",
     layout="wide"
 )
 
-# Comprehensive CSS for professional look
+# Enhanced Professional CSS
 st.markdown("""
 <style>
-    /* Global Styling */
-    body {
-        font-family: 'Inter', 'Segoe UI', Roboto, sans-serif;
-        background-color: #F9FAFB;
-        color: #1F2937;
+    /* Reset and Global Styles */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    
+    .stApp {
+        font-family: 'Inter', sans-serif;
+        background-color: #F3F4F6;
     }
 
     /* Header Styling */
     .main-header {
-        font-size: 42px !important;
-        font-weight: 800;
+        font-size: 36px !important;
+        font-weight: 700;
         color: #1E40AF;
-        margin-bottom: 25px;
         text-align: center;
-        letter-spacing: -1px;
+        margin-bottom: 20px;
+        letter-spacing: -0.5px;
     }
 
     /* Tabs Styling */
     .stTabs [data-baseweb="tab-list"] {
-        background-color: #EFF6FF;
-        border-radius: 12px;
-        padding: 8px;
+        background-color: transparent;
+        border-bottom: 1px solid #E5E7EB;
+        margin-bottom: 20px;
     }
 
     .stTabs [data-baseweb="tab"] {
-        height: 45px;
-        font-weight: 600;
-        color: #1E40AF;
+        color: #6B7280;
+        padding: 10px 15px;
+        font-weight: 500;
         transition: all 0.3s ease;
-        border-radius: 8px;
-    }
-
-    .stTabs [data-baseweb="tab"]:hover {
-        background-color: #E0F2FE;
-        color: #1D4ED8;
     }
 
     .stTabs [data-baseweb="tab"][aria-selected="true"] {
-        background-color: #1E40AF;
-        color: white !important;
+        color: #1E40AF;
+        border-bottom: 2px solid #1E40AF;
     }
 
-    /* Info Box Styling */
+    /* Information Box */
     .info-box {
-        background-color: #EFF6FF;
-        border-left: 6px solid #1E40AF;
+        background-color: white;
+        border-left: 4px solid #1E40AF;
+        padding: 15px 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        border-radius: 4px;
+    }
+
+    /* Project Information Layout */
+    .project-info-container {
+        display: flex;
+        gap: 20px;
+        background-color: white;
         padding: 20px;
-        border-radius: 10px;
-        margin-bottom: 25px;
+        border-radius: 8px;
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
     }
 
-    /* Project Card Styling */
-    .project-card {
-        background-color: white;
-        border-radius: 12px;
-        padding: 25px;
-        margin-bottom: 20px;
-        box-shadow: 0 10px 15px rgba(0, 0, 0, 0.08);
-        border: 1px solid #E5E7EB;
-        transition: all 0.3s ease;
+    .project-info-column {
+        flex: 1;
     }
 
-    .project-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 15px 20px rgba(0, 0, 0, 0.1);
+    .project-info-column h3 {
+        color: #1E40AF;
+        margin-bottom: 15px;
+        font-size: 18px;
+        font-weight: 600;
     }
 
-    /* Metric Card Styling */
+    .project-info-column p {
+        margin-bottom: 10px;
+        color: #4B5563;
+    }
+
+    .project-features ul {
+        padding-left: 20px;
+        color: #4B5563;
+    }
+
+    /* Metric Cards */
     .metric-card {
         background-color: white;
-        border-radius: 12px;
-        padding: 20px;
-        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.06);
         border: 1px solid #E5E7EB;
+        border-radius: 8px;
+        padding: 15px;
         text-align: center;
-        transition: all 0.3s ease;
-    }
-
-    .metric-card:hover {
-        transform: scale(1.02);
-        box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.04);
     }
 
     .metric-value {
-        font-size: 28px;
+        font-size: 24px;
         font-weight: 700;
         color: #1E40AF;
-        margin-bottom: 10px;
+        margin-bottom: 5px;
     }
 
     .metric-label {
-        font-size: 14px;
+        font-size: 12px;
         color: #6B7280;
         text-transform: uppercase;
         letter-spacing: 0.5px;
     }
 
-    /* Footer Styling */
+    /* DataFrames and Tables */
+    .stDataFrame {
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    /* Footer */
     .footer {
-        margin-top: 50px;
-        padding: 20px;
-        background-color: #F3F4F6;
         text-align: center;
         color: #6B7280;
         font-size: 12px;
+        padding: 20px;
+        background-color: white;
         border-top: 1px solid #E5E7EB;
-    }
-
-    /* DataTable Styling */
-    .stDataFrame {
-        border-radius: 12px;
-        overflow: hidden;
-        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.05);
-    }
-
-    /* Highlight Styling */
-    .highlight {
-        font-weight: 700;
-        color: #1E40AF;
     }
 
     /* Responsive Adjustments */
     @media (max-width: 768px) {
-        .main-header {
-            font-size: 32px !important;
+        .project-info-container {
+            flex-direction: column;
         }
     }
 </style>
