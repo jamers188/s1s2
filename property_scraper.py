@@ -183,7 +183,7 @@ def main():
     df = load_data()
     
     # Create tabs
-    tab1, tab2, tab3 = st.tabs(["Add Properties", "View & Edit Data", "Analyze Data"])
+    tab1, tab2, tab3 = st.tabs(["Add Properties", "View Data", "Analyze Data"])
     
     with tab1:
         st.header("Add New Property")
@@ -258,9 +258,30 @@ def main():
                     st.error(f"CSV is missing required columns: {', '.join(missing_cols)}")
             except Exception as e:
                 st.error(f"Error importing CSV: {e}")
+        
+        # Quick input template
+        st.header("Download CSV Template")
+        template_df = pd.DataFrame([{
+            'project': 'Damac Safa Two',
+            'property_type': 'Apartment',
+            'price': 2000000,
+            'area_sqft': 1200,
+            'bedrooms': '2',
+            'bathrooms': '2',
+            'location': 'Business Bay, Dubai',
+            'agent_name': 'Example Agent',
+            'property_url': 'https://www.propertyfinder.ae/example'
+        }])
+        
+        st.download_button(
+            "Download CSV Template",
+            data=template_df.to_csv(index=False).encode('utf-8'),
+            file_name="property_template.csv",
+            mime="text/csv"
+        )
     
     with tab2:
-        st.header("View & Edit Property Data")
+        st.header("View Property Data")
         
         if df.empty:
             st.info("No property data available. Add properties in the 'Add Properties' tab.")
@@ -283,54 +304,22 @@ def main():
             
             # Display data
             st.write(f"Showing {len(filtered_df)} of {len(df)} properties")
+            st.dataframe(filtered_df)
             
-            # Enable editing
-            edited_df = st.data_editor(
-                filtered_df,
-                use_container_width=True,
-                num_rows="dynamic",
-                column_config={
-                    "project": st.column_config.TextColumn("Project"),
-                    "price": st.column_config.NumberColumn("Price (AED)"),
-                    "area_sqft": st.column_config.NumberColumn("Area (sq.ft)"),
-                    "entry_date": st.column_config.DatetimeColumn("Entry Date")
-                }
-            )
-            
-            if st.button("Save Changes"):
-                # Update the main dataframe with edited values
+            # Delete functionality (simplified)
+            if st.button("Delete All Displayed Properties"):
+                # Get indices to delete from the original DataFrame
                 if filter_project != "All" or filter_property_type != "All":
-                    # If filtered, we need to update only the filtered rows
-                    for idx, row in edited_df.iterrows():
-                        # Find the corresponding index in the original DataFrame
-                        # This is a simplified approach and might need refinement for complex cases
-                        match_idx = df.index[
-                            (df['project'] == row['project']) & 
-                            (df['price'] == row['price']) & 
-                            (df['entry_date'] == row['entry_date'])
-                        ].tolist()
-                        
-                        if match_idx:
-                            df.loc[match_idx[0]] = row
+                    if filter_project != "All":
+                        df = df[df['project'] != filter_project]
+                    if filter_property_type != "All":
+                        df = df[df['property_type'] != filter_property_type]
                 else:
-                    # If not filtered, we can replace the entire DataFrame
-                    df = edited_df.copy()
+                    df = pd.DataFrame(columns=df.columns)  # Empty the DataFrame
                 
                 # Save updated data
                 if save_data(df):
-                    st.success("Changes saved successfully!")
-                else:
-                    st.error("Failed to save changes.")
-            
-            # Add delete functionality
-            if st.button("Delete Selected Properties"):
-                # Get indices to delete (this is simplified and might need refinement)
-                to_delete = edited_df.index
-                df = df.drop(to_delete).reset_index(drop=True)
-                
-                # Save updated data
-                if save_data(df):
-                    st.success("Selected properties deleted successfully!")
+                    st.success("Properties deleted successfully!")
                 else:
                     st.error("Failed to delete properties.")
                 
@@ -338,13 +327,12 @@ def main():
                 st.experimental_rerun()
             
             # Export data
-            if st.download_button(
+            st.download_button(
                 "Export Data as CSV",
                 data=filtered_df.to_csv(index=False).encode('utf-8'),
                 file_name=f"property_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
                 mime="text/csv"
-            ):
-                st.success("Data exported successfully!")
+            )
     
     with tab3:
         st.header("Analyze Property Data")
@@ -438,15 +426,7 @@ def main():
                 
                 # Display detailed data
                 st.subheader("Property Listings")
-                st.dataframe(
-                    analysis['dataframe'],
-                    use_container_width=True,
-                    column_config={
-                        "price": st.column_config.NumberColumn("Price (AED)", format="%.2f"),
-                        "area_sqft": st.column_config.NumberColumn("Area (sq.ft)", format="%.2f"),
-                        "price_per_sqft": st.column_config.NumberColumn("Price/sq.ft", format="%.2f")
-                    }
-                )
+                st.dataframe(analysis['dataframe'])
             else:
                 st.warning(f"No data available for {project_name}.")
 
