@@ -267,15 +267,15 @@ def main():
     st.subheader("Select Projects to Analyze")
     col1, col2 = st.columns(2)
     with col1:
-        analyze_safa_one = st.checkbox("Damac Safa One", value=True)
+        analyze_safa_one = st.checkbox("Safa One", value=True)
     with col2:
-        analyze_safa_two = st.checkbox("Damac Safa Two", value=True)
+        analyze_safa_two = st.checkbox("Safa Two", value=True)
     
     projects = []
     if analyze_safa_one:
-        projects.append("Damac Safa One")
+        projects.append("Safa One")
     if analyze_safa_two:
-        projects.append("Damac Safa Two")
+        projects.append("Safa Two")
     
     # Start analysis button
     if st.button("Start Analysis", type="primary"):
