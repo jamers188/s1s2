@@ -667,7 +667,7 @@ def main():
             st.markdown("""
             <div class="project-card">
                 <h2 style="color: #1E3A8A; margin-bottom: 15px;">Safa One</h2>
-                <img src="your_image.jpg" class="project-image">
+                <img src="s1s2/your_image.jpg" class="project-image">
                 <p><span class="highlight">Location:</span> Al Safa 1, Dubai</p>
                 <p><span class="highlight">Delivery:</span> Q2 2026</p>
                 <p><span class="highlight">Price Range:</span> AED 1.6M - AED 30M</p>
