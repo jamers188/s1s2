@@ -9,139 +9,274 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-# Page configuration
+# Set page configuration
 st.set_page_config(
     page_title="Damac Safa Properties Analysis",
     page_icon="🏢",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="collapsed"
 )
 
-# Enhanced Professional CSS
+# Enhanced custom CSS styling
 st.markdown("""
 <style>
-    /* Reset and Global Styles */
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    /* General typography */
+    body {
+        font-family: 'Segoe UI', Arial, sans-serif;
+    }
     
-    .stApp {
-        font-family: 'Inter', sans-serif;
-        background-color: #F3F4F6;
-    }
-
-    /* Header Styling */
+    /* Header styles */
     .main-header {
-        font-size: 36px !important;
+        font-size: 38px !important;
         font-weight: 700;
-        color: #1E40AF;
+        color: #0d3b66;
+        margin-bottom: 30px;
         text-align: center;
-        margin-bottom: 20px;
-        letter-spacing: -0.5px;
+        padding: 20px 0;
+        border-bottom: 2px solid #f0f2f6;
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
     }
-
-    /* Tabs Styling */
-    .stTabs [data-baseweb="tab-list"] {
-        background-color: transparent;
-        border-bottom: 1px solid #E5E7EB;
-        margin-bottom: 20px;
-    }
-
-    .stTabs [data-baseweb="tab"] {
-        color: #6B7280;
-        padding: 10px 15px;
-        font-weight: 500;
-        transition: all 0.3s ease;
-    }
-
-    .stTabs [data-baseweb="tab"][aria-selected="true"] {
-        color: #1E40AF;
-        border-bottom: 2px solid #1E40AF;
-    }
-
-    /* Information Box */
-    .info-box {
-        background-color: white;
-        border-left: 4px solid #1E40AF;
-        padding: 15px 20px;
-        margin-bottom: 20px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-        border-radius: 4px;
-    }
-
-    /* Project Information Layout */
-    .project-info-container {
-        display: flex;
-        gap: 20px;
-        background-color: white;
-        padding: 20px;
-        border-radius: 8px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-    }
-
-    .project-info-column {
-        flex: 1;
-    }
-
-    .project-info-column h3 {
-        color: #1E40AF;
-        margin-bottom: 15px;
-        font-size: 18px;
-        font-weight: 600;
-    }
-
-    .project-info-column p {
-        margin-bottom: 10px;
-        color: #4B5563;
-    }
-
-    .project-features ul {
-        padding-left: 20px;
-        color: #4B5563;
-    }
-
-    /* Metric Cards */
-    .metric-card {
-        background-color: white;
-        border: 1px solid #E5E7EB;
-        border-radius: 8px;
-        padding: 15px;
-        text-align: center;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.04);
-    }
-
-    .metric-value {
+    
+    .sub-header {
         font-size: 24px;
+        font-weight: 600;
+        color: #0d3b66;
+        margin-top: 35px;
+        margin-bottom: 15px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid #e0e7ff;
+    }
+    
+    .project-title {
+        font-size: 30px;
+        font-weight: 600;
+        color: #0d3b66;
+        margin: 25px 0 20px 0;
+        text-align: center;
+        padding: 10px 0;
+        border-bottom: 1px solid #e0e7ff;
+    }
+    
+    /* Card styles */
+    .metric-card {
+        background-color: #ffffff;
+        border-radius: 12px;
+        padding: 18px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        height: 100%;
+        border: 1px solid #f0f2f6;
+    }
+    
+    .metric-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+    }
+    
+    .metric-value {
+        font-size: 26px;
         font-weight: 700;
-        color: #1E40AF;
+        color: #0d3b66;
         margin-bottom: 5px;
     }
-
+    
     .metric-label {
-        font-size: 12px;
-        color: #6B7280;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
+        font-size: 14px;
+        color: #64748b;
+        font-weight: 500;
     }
-
-    /* DataFrames and Tables */
-    .stDataFrame {
+    
+    .info-box {
+        background-color: #f0f7ff;
+        border-left: 5px solid #0d3b66;
+        padding: 18px;
         border-radius: 8px;
+        margin-bottom: 25px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    }
+    
+    .data-table {
+        border-radius: 12px;
         overflow: hidden;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
+        margin-top: 15px;
+        margin-bottom: 30px;
     }
-
-    /* Footer */
-    .footer {
-        text-align: center;
-        color: #6B7280;
-        font-size: 12px;
-        padding: 20px;
+    
+    .project-card {
         background-color: white;
-        border-top: 1px solid #E5E7EB;
+        border-radius: 12px;
+        padding: 24px;
+        margin-bottom: 25px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+        transition: transform 0.2s ease;
+        border: 1px solid #f0f2f6;
+        height: 100%;
     }
-
-    /* Responsive Adjustments */
-    @media (max-width: 768px) {
-        .project-info-container {
-            flex-direction: column;
-        }
+    
+    .project-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    }
+    
+    .project-image {
+        border-radius: 8px;
+        width: 100%;
+        margin-bottom: 20px;
+        transition: transform 0.3s ease;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    
+    .project-image:hover {
+        transform: scale(1.02);
+    }
+    
+    /* Table styles */
+    .compare-table th {
+        background-color: #f0f7ff;
+        padding: 12px !important;
+    }
+    
+    .compare-table td {
+        padding: 12px !important;
+    }
+    
+    /* Tab styling */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 10px;
+    }
+    
+    .stTabs [data-baseweb="tab"] {
+        background-color: #f8fafc;
+        border-radius: 4px 4px 0 0;
+        padding: 8px 20px !important;
+        font-weight: 600;
+    }
+    
+    .stTabs [aria-selected="true"] {
+        background-color: #0d3b66 !important;
+        color: white !important;
+    }
+    
+    /* Button styling */
+    .stButton > button {
+        background-color: #0d3b66;
+        color: white;
+        font-weight: 600;
+        border-radius: 6px;
+        padding: 4px 15px;
+        border: none;
+        box-shadow: 0 3px 5px rgba(0, 0, 0, 0.15);
+    }
+    
+    .stButton > button:hover {
+        background-color: #0a2a4a;
+        box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
+    }
+    
+    /* Selectbox styling */
+    .stSelectbox div[data-baseweb="select"] > div {
+        border-radius: 6px;
+        background-color: #f8fafc;
+        border-color: #e2e8f0;
+    }
+    
+    /* Dataframe styling */
+    .dataframe-container {
+        border-radius: 12px !important;
+        overflow: hidden !important;
+        margin-top: 15px;
+    }
+    
+    .dataframe-container [data-testid="stDataFrame"] div {
+        border-radius: 12px !important;
+    }
+    
+    .highlight {
+        font-weight: 600;
+        color: #0d3b66;
+    }
+    
+    .tab-content {
+        padding: 25px 0;
+    }
+    
+    .footer {
+        margin-top: 60px;
+        text-align: center;
+        color: #64748b;
+        font-size: 13px;
+        padding: 20px 0;
+        border-top: 1px solid #e2e8f0;
+    }
+    
+    /* Custom badges */
+    .badge {
+        display: inline-block;
+        padding: 3px 8px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 600;
+        margin-right: 6px;
+    }
+    
+    .badge-blue {
+        background-color: #dbeafe;
+        color: #1e40af;
+    }
+    
+    .badge-green {
+        background-color: #dcfce7;
+        color: #166534;
+    }
+    
+    .badge-orange {
+        background-color: #ffedd5;
+        color: #9a3412;
+    }
+    
+    /* Feature list styling */
+    .feature-list {
+        list-style-type: none;
+        padding-left: 0;
+    }
+    
+    .feature-list li {
+        margin-bottom: 8px;
+        position: relative;
+        padding-left: 22px;
+    }
+    
+    .feature-list li:before {
+        content: "✓";
+        position: absolute;
+        left: 0;
+        color: #0d3b66;
+        font-weight: bold;
+    }
+    
+    /* Container styling */
+    .content-container {
+        background-color: #ffffff;
+        border-radius: 12px;
+        padding: 25px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        margin-bottom: 25px;
+    }
+    
+    /* Misc */
+    hr.divider {
+        margin: 30px 0;
+        border: none;
+        height: 1px;
+        background-color: #e2e8f0;
+    }
+    
+    .plotly-chart {
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        padding: 15px;
+        background-color: white;
     }
 </style>
 """, unsafe_allow_html=True)
