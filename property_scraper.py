@@ -1,161 +1,76 @@
-import streamlit as st
-import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
-import numpy as np
-from datetime import datetime
-import os
-
-# Page configuration
-st.set_page_config(
-    page_title="Damac Safa One & Two Property Analysis",
-    page_icon="🏢",
-    layout="wide"
-)
-
-# Create a directory for results
-RESULTS_DIR = "results"
-if not os.path.exists(RESULTS_DIR):
-    os.makedirs(RESULTS_DIR)
-
-# Hard-coded property data from Safa Two
-SAFA_TWO_DATA = [
-    # Studios
-    {"project": "Safa Two", "property_type": "Apartment", "price": 949000, "area_sqft": 358, "bedrooms": "studio", "bathrooms": "1", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "Spacious Layout | High Floor | Motivated Seller"},
-    {"project": "Safa Two", "property_type": "Apartment", "price": 1280000, "area_sqft": 626, "bedrooms": "studio", "bathrooms": "1", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "2% commission | 6% BELOW OP | Luxurious Unit"},
-    {"project": "Safa Two", "property_type": "Apartment", "price": 1320000, "area_sqft": 470, "bedrooms": "studio", "bathrooms": "1", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "Stunning Views |Studio Apartment | High Floor"},
-    {"project": "Safa Two", "property_type": "Apartment", "price": 1507000, "area_sqft": 730, "bedrooms": "studio", "bathrooms": "1", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "Branded and Spacious Studio | High Floor"},
-    {"project": "Safa Two", "property_type": "Apartment", "price": 1715000, "area_sqft": 697, "bedrooms": "studio", "bathrooms": "1", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "Canal View | Mid Floor | 3.75% Payment Plan"},
-    
-    # 1 Bedroom
-    {"project": "Safa Two", "property_type": "Apartment", "price": 1490000, "area_sqft": 791, "bedrooms": "1", "bathrooms": "1", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "Super Distress Deal | Premium project | Below 20%"},
-    {"project": "Safa Two", "property_type": "Apartment", "price": 1595000, "area_sqft": 683, "bedrooms": "1", "bathrooms": "1", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "Luxurious Design | Amazing View | on Payment Plan"},
-    {"project": "Safa Two", "property_type": "Apartment", "price": 1600000, "area_sqft": 789, "bedrooms": "1", "bathrooms": "1", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "12% Under OP | Investor Deal | Premium View | 2027 PP"},
-    {"project": "Safa Two", "property_type": "Apartment", "price": 1634880, "area_sqft": 714, "bedrooms": "1", "bathrooms": "1", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "Stunning Safa Views| High Floor | Branded Unit"},
-    {"project": "Safa Two", "property_type": "Apartment", "price": 1660000, "area_sqft": 713, "bedrooms": "1", "bathrooms": "1", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "ULTRA LUXURY | INCREDIBLE VIEW | BELOW OP"},
-    {"project": "Safa Two", "property_type": "Apartment", "price": 1700000, "area_sqft": 792, "bedrooms": "1", "bathrooms": "1", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "BELOW OP | SEA VIEW | HIGH FLOOR | FULLY PAID"},
-    {"project": "Safa Two", "property_type": "Apartment", "price": 1700000, "area_sqft": 792, "bedrooms": "1", "bathrooms": "1", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "SEA VIEW | HIGH FLOOR | Q2 2027 | FULLY PAID"},
-    {"project": "Safa Two", "property_type": "Apartment", "price": 1780000, "area_sqft": 830, "bedrooms": "1", "bathrooms": "1", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "Prime location | 20% BELOW ORIGINAL PRICE"},
-    {"project": "Safa Two", "property_type": "Apartment", "price": 1800000, "area_sqft": 744, "bedrooms": "1", "bathrooms": "1", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "1 Bed | High Floor | Payment Plan | Close to OP"},
-    {"project": "Safa Two", "property_type": "Apartment", "price": 1825000, "area_sqft": 831, "bedrooms": "1", "bathrooms": "1", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "INVESTOR DEAL | PRIME LOCATION | HIGH FLOOR"},
-    {"project": "Safa Two", "property_type": "Apartment", "price": 1843500, "area_sqft": 758, "bedrooms": "1", "bathrooms": "1", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "Premium View | Luxurious | De Grisogono Interiors"},
-    {"project": "Safa Two", "property_type": "Apartment", "price": 1850000, "area_sqft": 775, "bedrooms": "1", "bathrooms": "1", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "1BR with Spectacular View | High Floor | Spacious"},
-    {"project": "Safa Two", "property_type": "Apartment", "price": 1900000, "area_sqft": 745, "bedrooms": "1", "bathrooms": "1", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "Sea view | Safa 2 | Q3 2027 | Luxurious Design"},
-    {"project": "Safa Two", "property_type": "Apartment", "price": 1990000, "area_sqft": 771, "bedrooms": "1", "bathrooms": "1", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "Branded and fully furnished | cozy unit with balcony"},
-    {"project": "Safa Two", "property_type": "Apartment", "price": 1999989, "area_sqft": 827, "bedrooms": "1", "bathrooms": "1", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "High Floor | Motivated Seller | Sea View"},
-    {"project": "Safa Two", "property_type": "Apartment", "price": 2000000, "area_sqft": 803, "bedrooms": "1", "bathrooms": "1", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "Distressed Deal Motivated Seller | Very High Floor"},
-    {"project": "Safa Two", "property_type": "Apartment", "price": 2000000, "area_sqft": 744, "bedrooms": "1", "bathrooms": "1", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "Damac | Safa Two | High floor | Q2 2027 Handover"},
-    {"project": "Safa Two", "property_type": "Apartment", "price": 2170000, "area_sqft": 775, "bedrooms": "1", "bathrooms": "1", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "Higher Floor || Modern Unit 1 Bedroom || Sea View"},
-    {"project": "Safa Two", "property_type": "Apartment", "price": 2175000, "area_sqft": 762, "bedrooms": "1", "bathrooms": "1", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "LOW PRICE | PARK & SEA VIEW | HIGH FLOOR"},
-    {"project": "Safa Two", "property_type": "Apartment", "price": 2200000, "area_sqft": 812, "bedrooms": "1", "bathrooms": "1", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "Luxury 1-Bedroom Apartment with Stunning Views"},
-    {"project": "Safa Two", "property_type": "Apartment", "price": 2222000, "area_sqft": 744, "bedrooms": "1", "bathrooms": "1", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "Damac | Safa Two | Sea view | High floor"},
-    {"project": "Safa Two", "property_type": "Apartment", "price": 2222000, "area_sqft": 771, "bedrooms": "1", "bathrooms": "1", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "Damac | Safa Two | Sea view | High floor | 1Br"},
-    
-    # 1 Bedroom with 2 Bathrooms
-    {"project": "Safa Two", "property_type": "Apartment", "price": 1599000, "area_sqft": 757, "bedrooms": "1", "bathrooms": "2", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "High ROI | Burj-Palm Views| Luxury High-Rise Tower"},
-    {"project": "Safa Two", "property_type": "Apartment", "price": 1650000, "area_sqft": 794, "bedrooms": "1", "bathrooms": "2", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "Below OP | High Floor | City View | Comfortable Payment Plan"},
-    {"project": "Safa Two", "property_type": "Apartment", "price": 1690000, "area_sqft": 795, "bedrooms": "1", "bathrooms": "2", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "Sea View | High Floor | Below Market Price"},
-    {"project": "Safa Two", "property_type": "Apartment", "price": 1800000, "area_sqft": 776, "bedrooms": "1", "bathrooms": "2", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "High Floor | Sea View | Serious Seller"},
-    {"project": "Safa Two", "property_type": "Apartment", "price": 1850000, "area_sqft": 776, "bedrooms": "1", "bathrooms": "2", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "Sea View | Negotiable | Urgent Sale | High Floor"},
-    {"project": "Safa Two", "property_type": "Apartment", "price": 1889999, "area_sqft": 774, "bedrooms": "1", "bathrooms": "2", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "Original Price | Very High Floor | Downtown View"},
-    {"project": "Safa Two", "property_type": "Apartment", "price": 1900000, "area_sqft": 688, "bedrooms": "1", "bathrooms": "2", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "Multiple Units | 1-Bedroom Apartment | Prime Location"},
-    {"project": "Safa Two", "property_type": "Apartment", "price": 1900000, "area_sqft": 753, "bedrooms": "1", "bathrooms": "2", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "Spacious >> Canal view >> Best price"},
-    {"project": "Safa Two", "property_type": "Apartment", "price": 2200000, "area_sqft": 829, "bedrooms": "1", "bathrooms": "2", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "Premium layout | High floor | Best price"},
-    {"project": "Safa Two", "property_type": "Apartment", "price": 2800000, "area_sqft": 744, "bedrooms": "1", "bathrooms": "2", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "Ultra Luxury Unit /Above 70th Floor /Full Seaview"},
-    
-    # 2 Bedrooms
-    {"project": "Safa Two", "property_type": "Apartment", "price": 2293200, "area_sqft": 1154, "bedrooms": "2", "bathrooms": "2", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "Luxury 2-bedroom | Middle Floor | Prime Location"},
-    {"project": "Safa Two", "property_type": "Apartment", "price": 2405000, "area_sqft": 1208, "bedrooms": "2", "bathrooms": "2", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "Sleek Design | Community View |Convenient Location"},
-    {"project": "Safa Two", "property_type": "Apartment", "price": 2436525, "area_sqft": 1172, "bedrooms": "2", "bathrooms": "2", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "15% Below Original Price | Above 55TH Floor |"},
-    {"project": "Safa Two", "property_type": "Apartment", "price": 2450000, "area_sqft": 1054, "bedrooms": "2", "bathrooms": "2", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "Eminence Homes Real Estate"},
-    {"project": "Safa Two", "property_type": "Apartment", "price": 2550000, "area_sqft": 1208, "bedrooms": "2", "bathrooms": "2", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "Resale Payment Plan Branded Residence I High Floor"},
-    {"project": "Safa Two", "property_type": "Apartment", "price": 2700000, "area_sqft": 1138, "bedrooms": "2", "bathrooms": "2", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "Luxury Unit | Payment Plan | Exclusive Resale"},
-    {"project": "Safa Two", "property_type": "Apartment", "price": 2750000, "area_sqft": 1355, "bedrooms": "2", "bathrooms": "2", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "Distress | Lower OP | Damac Luxury 2br | Sea view"},
-    {"project": "Safa Two", "property_type": "Apartment", "price": 2850000, "area_sqft": 1138, "bedrooms": "2", "bathrooms": "2", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "PERFECT LAYOUT l LUXURY UNIT | 2 BHK"},
-    {"project": "Safa Two", "property_type": "Apartment", "price": 2900000, "area_sqft": 1144, "bedrooms": "2", "bathrooms": "2", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "Iconic Design | Unique Feature | Ultra Luxury"},
-    {"project": "Safa Two", "property_type": "Apartment", "price": 2900000, "area_sqft": 1172, "bedrooms": "2", "bathrooms": "2", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "Resale| High floor| Dubai Canal and Park view"},
-    {"project": "Safa Two", "property_type": "Apartment", "price": 3050000, "area_sqft": 1145, "bedrooms": "2", "bathrooms": "2", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "Luxury + Spacious 2BR | Prime Location | City View"},
-    {"project": "Safa Two", "property_type": "Apartment", "price": 3299000, "area_sqft": 1463, "bedrooms": "2", "bathrooms": "2", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "Damac | Bargain | High floor | Q2 2027 Handover"},
-    {"project": "Safa Two", "property_type": "Apartment", "price": 3375900, "area_sqft": 1148, "bedrooms": "2", "bathrooms": "2", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "Excellent Location | Branded Luxury Residence | High View"},
-    {"project": "Safa Two", "property_type": "Apartment", "price": 3450000, "area_sqft": 1049, "bedrooms": "2", "bathrooms": "2", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "Great Investment | Prime Spot | Premium Amenities"},
-    {"project": "Safa Two", "property_type": "Apartment", "price": 4300000, "area_sqft": 1420, "bedrooms": "2", "bathrooms": "2", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "Exclusive | Luxury | High Floor | PHPP"},
-    {"project": "Safa Two", "property_type": "Apartment", "price": 4554200, "area_sqft": 1311, "bedrooms": "2", "bathrooms": "2", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "Luxury Branded Apartment | Exceptional Opportunity"},
-    
-    # 2 Bedrooms with 3 Bathrooms
-    {"project": "Safa Two", "property_type": "Apartment", "price": 2600000, "area_sqft": 1172, "bedrooms": "2", "bathrooms": "3", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "Branded Residence | Genuine Resale | High Floor"},
-    {"project": "Safa Two", "property_type": "Apartment", "price": 2700000, "area_sqft": 1124, "bedrooms": "2", "bathrooms": "3", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "Luxurious | Burj Khalifa View | High Floor"},
-    {"project": "Safa Two", "property_type": "Apartment", "price": 2700000, "area_sqft": 1294, "bedrooms": "2", "bathrooms": "3", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "EZ Properties"},
-    {"project": "Safa Two", "property_type": "Apartment", "price": 2850000, "area_sqft": 1130, "bedrooms": "2", "bathrooms": "3", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "Welcome agents | Price is negotiable | Middle floor"},
-    {"project": "Safa Two", "property_type": "Apartment", "price": 2850000, "area_sqft": 1557, "bedrooms": "2", "bathrooms": "3", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "BELOW ORIGINAL PRICE | HUGE PREMIUM LAYOUT | BRANDED RESIDENCE"},
-    {"project": "Safa Two", "property_type": "Apartment", "price": 3200000, "area_sqft": 1399, "bedrooms": "2", "bathrooms": "3", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "Provident Estate"},
-    {"project": "Safa Two", "property_type": "Apartment", "price": 3600000, "area_sqft": 1426, "bedrooms": "2", "bathrooms": "3", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "Corner 2 beds, payment plan, Downtown view"},
-    
-    # 3 Bedrooms
-    {"project": "Safa Two", "property_type": "Apartment", "price": 3269890, "area_sqft": 1493, "bedrooms": "3", "bathrooms": "4", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "Skyline Views | Luxurious 3BR | Investor Deal"},
-    {"project": "Safa Two", "property_type": "Apartment", "price": 3269990, "area_sqft": 1484, "bedrooms": "3", "bathrooms": "3", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "Downtown Skyline Views | Luxury Living | Ready in 2027"},
-    {"project": "Safa Two", "property_type": "Apartment", "price": 3800000, "area_sqft": 1503, "bedrooms": "3", "bathrooms": "3", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "haus & haus Real Estate"},
-    {"project": "Safa Two", "property_type": "Apartment", "price": 4250000, "area_sqft": 1735, "bedrooms": "3", "bathrooms": "3", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "Exclusif 3 Bed, Corner, Tower A - Sea, Canal View"},
-    {"project": "Safa Two", "property_type": "Apartment", "price": 4477000, "area_sqft": 1523, "bedrooms": "3", "bathrooms": "3", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "Exclusive 3 Bedroom | 70+ Floor | Safa Two Tower A"},
-    {"project": "Safa Two", "property_type": "Apartment", "price": 4500000, "area_sqft": 2001, "bedrooms": "3", "bathrooms": "4", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "Driven Properties"},
-    {"project": "Safa Two", "property_type": "Apartment", "price": 4900000, "area_sqft": 1658, "bedrooms": "3", "bathrooms": "4", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "High Floor | Corner Unit | Two balconies and study"},
-    {"project": "Safa Two", "property_type": "Apartment", "price": 4995000, "area_sqft": 1710, "bedrooms": "3", "bathrooms": "4", "location": "Business Bay, Dubai", "developer": "Damac Properties", "description": "Premium View I Corner Unit I 3 BHK I At Safa Two"}
-]
-
 # Hard-coded property data from Safa One
 SAFA_ONE_DATA = [
-    # 1 Bedroom
-    {"project": "Safa One", "property_type": "Apartment", "price": 1600000, "area_sqft": 838, "bedrooms": "1", "bathrooms": "2", "location": "Al Safa, Dubai", "developer": "Damac Properties", "description": "-14% Below Original Price | High Floor | HO 2026"},
-    {"project": "Safa One", "property_type": "Apartment", "price": 1699990, "area_sqft": 840, "bedrooms": "1", "bathrooms": "2", "location": "Al Safa, Dubai", "developer": "Damac Properties", "description": "High Floor | Prime Location | Handover 2026"},
-    {"project": "Safa One", "property_type": "Apartment", "price": 1742182, "area_sqft": 838, "bedrooms": "1", "bathrooms": "1", "location": "Al Safa, Dubai", "developer": "Damac Properties", "description": "Sea, Burj Al Arab View | Prime Location | Spacious"},
-    {"project": "Safa One", "property_type": "Apartment", "price": 1750000, "area_sqft": 836, "bedrooms": "1", "bathrooms": "1", "location": "Al Safa, Dubai", "developer": "Damac Properties", "description": "High Floor | Amazing View | Exclusive Listing"},
-    {"project": "Safa One", "property_type": "Apartment", "price": 1790000, "area_sqft": 838, "bedrooms": "1", "bathrooms": "2", "location": "Al Safa, Dubai", "developer": "Damac Properties", "description": "Below Original Price | High Floor | Handover 2026"},
-    {"project": "Safa One", "property_type": "Apartment", "price": 1811000, "area_sqft": 838, "bedrooms": "1", "bathrooms": "1", "location": "Al Safa, Dubai", "developer": "Damac Properties", "description": "Investor Deal | Spacious | Canal View"},
-    {"project": "Safa One", "property_type": "Apartment", "price": 1811000, "area_sqft": 838, "bedrooms": "1", "bathrooms": "2", "location": "Al Safa, Dubai", "developer": "Damac Properties", "description": "Amazing View | High Floor | Pool-Canal View"},
-    {"project": "Safa One", "property_type": "Apartment", "price": 1850000, "area_sqft": 836, "bedrooms": "1", "bathrooms": "1", "location": "Al Safa, Dubai", "developer": "Damac Properties", "description": "Urgent Sale | Selling Below Original Price"},
-    {"project": "Safa One", "property_type": "Apartment", "price": 1873000, "area_sqft": 840, "bedrooms": "1", "bathrooms": "1", "location": "Al Safa, Dubai", "developer": "Damac Properties", "description": "Prime Location| Sea Views | High ROI"},
-    {"project": "Safa One", "property_type": "Apartment", "price": 1873000, "area_sqft": 850, "bedrooms": "1", "bathrooms": "2", "location": "Al Safa, Dubai", "developer": "Damac Properties", "description": "Investor Deal | High Floor | Sea and Sunset View"},
-    {"project": "Safa One", "property_type": "Apartment", "price": 2100000, "area_sqft": 850, "bedrooms": "1", "bathrooms": "2", "location": "Al Safa, Dubai", "developer": "Damac Properties", "description": "Prime Location | Burj Al Arab View | Higher Floor"},
-    {"project": "Safa One", "property_type": "Apartment", "price": 2200000, "area_sqft": 838, "bedrooms": "1", "bathrooms": "2", "location": "Al Safa, Dubai", "developer": "Damac Properties", "description": "Handover 2026 | Genuine Resale | Prime Location"},
-    {"project": "Safa One", "property_type": "Apartment", "price": 2500000, "area_sqft": 838, "bedrooms": "1", "bathrooms": "2", "location": "Al Safa, Dubai", "developer": "Damac Properties", "description": "Safa One | 1 bed | Sea View | Mid floor"},
+    # 1 Bedroom properties 
+    {"project": "Safa One", "property_type": "Apartment", "price": 1600000, "area_sqft": 838, "bedrooms": "1", "bathrooms": "2", "location": "Al Safa 1, Dubai", "developer": "Damac Properties", "description": "-14% Below Original Price | High Floor | HO 2026"},
+    {"project": "Safa One", "property_type": "Apartment", "price": 1699990, "area_sqft": 840, "bedrooms": "1", "bathrooms": "2", "location": "Al Safa 1, Dubai", "developer": "Damac Properties", "description": "High Floor | Prime Location | Handover 2026"},
+    {"project": "Safa One", "property_type": "Apartment", "price": 1742182, "area_sqft": 838, "bedrooms": "1", "bathrooms": "1", "location": "Al Safa 1, Dubai", "developer": "Damac Properties", "description": "Sea, Burj Al Arab View | Prime Location | Spacious"},
+    {"project": "Safa One", "property_type": "Apartment", "price": 1750000, "area_sqft": 836, "bedrooms": "1", "bathrooms": "1", "location": "Al Safa 1, Dubai", "developer": "Damac Properties", "description": "High Floor | Amazing View | Exclusive Listing"},
+    {"project": "Safa One", "property_type": "Apartment", "price": 1790000, "area_sqft": 838, "bedrooms": "1", "bathrooms": "2", "location": "Al Safa 1, Dubai", "developer": "Damac Properties", "description": "Below Original Price | High Floor | Handover 2026"},
+    {"project": "Safa One", "property_type": "Apartment", "price": 1811000, "area_sqft": 838, "bedrooms": "1", "bathrooms": "2", "location": "Al Safa 1, Dubai", "developer": "Damac Properties", "description": "Amazing View | High Floor | Pool-Canal View"},
+    {"project": "Safa One", "property_type": "Apartment", "price": 1811000, "area_sqft": 838, "bedrooms": "1", "bathrooms": "1", "location": "Al Safa 1, Dubai", "developer": "Damac Properties", "description": "Investor Deal | Spacious | Canal View"},
+    {"project": "Safa One", "property_type": "Apartment", "price": 1850000, "area_sqft": 836, "bedrooms": "1", "bathrooms": "1", "location": "Al Safa 1, Dubai", "developer": "Damac Properties", "description": "Urgent Sale | Selling Below Original Price"},
+    {"project": "Safa One", "property_type": "Apartment", "price": 1873000, "area_sqft": 850, "bedrooms": "1", "bathrooms": "2", "location": "Al Safa 1, Dubai", "developer": "Damac Properties", "description": "Investor Deal | High Floor | Sea and Sunset View"},
+    {"project": "Safa One", "property_type": "Apartment", "price": 1873000, "area_sqft": 840, "bedrooms": "1", "bathrooms": "1", "location": "Al Safa 1, Dubai", "developer": "Damac Properties", "description": "Prime Location| Sea Views | High ROI"},
+    {"project": "Safa One", "property_type": "Apartment", "price": 2100000, "area_sqft": 850, "bedrooms": "1", "bathrooms": "2", "location": "Al Safa 1, Dubai", "developer": "Damac Properties", "description": "Prime Location | Burj Al Arab View | Higher Floor"},
+    {"project": "Safa One", "property_type": "Apartment", "price": 2200000, "area_sqft": 838, "bedrooms": "1", "bathrooms": "2", "location": "Al Safa 1, Dubai", "developer": "Damac Properties", "description": "Handover 2026 | Genuine Resale | Prime Location"},
+    {"project": "Safa One", "property_type": "Apartment", "price": 2500000, "area_sqft": 838, "bedrooms": "1", "bathrooms": "2", "location": "Al Safa 1, Dubai", "developer": "Damac Properties", "description": "Safa One | 1 bed | Sea View | Mid floor"},
     
-    # 2 Bedrooms
-    {"project": "Safa One", "property_type": "Apartment", "price": 2393000, "area_sqft": 1228, "bedrooms": "2", "bathrooms": "3", "location": "Al Safa, Dubai", "developer": "Damac Properties", "description": "Best Deal | Corner Unit | Park, Sea and Burj Views"},
-    {"project": "Safa One", "property_type": "Apartment", "price": 2393000, "area_sqft": 1231, "bedrooms": "2", "bathrooms": "3", "location": "Al Safa, Dubai", "developer": "Damac Properties", "description": "Exclusive Offer | High ROI | Investor Deal"},
-    {"project": "Safa One", "property_type": "Apartment", "price": 2480998, "area_sqft": 1231, "bedrooms": "2", "bathrooms": "2", "location": "Al Safa, Dubai", "developer": "Damac Properties", "description": "Full Sea and Burj Al Arab View | Luxury Living"},
-    {"project": "Safa One", "property_type": "Apartment", "price": 2566000, "area_sqft": 1226, "bedrooms": "2", "bathrooms": "3", "location": "Al Safa, Dubai", "developer": "Damac Properties", "description": "Wasl Park View | High Floor | Branded"},
-    {"project": "Safa One", "property_type": "Apartment", "price": 2600000, "area_sqft": 1222, "bedrooms": "2", "bathrooms": "3", "location": "Al Safa, Dubai", "developer": "Damac Properties", "description": "Exclusive Resale | 2BR in Al Safa One | Investment"},
-    {"project": "Safa One", "property_type": "Apartment", "price": 2900000, "area_sqft": 1231, "bedrooms": "2", "bathrooms": "3", "location": "Al Safa, Dubai", "developer": "Damac Properties", "description": "Investor Deal I Mid Floor I Modern Living"},
-    {"project": "Safa One", "property_type": "Apartment", "price": 3050000, "area_sqft": 1223, "bedrooms": "2", "bathrooms": "2", "location": "Al Safa, Dubai", "developer": "Damac Properties", "description": "Stunning Views | 2BR-Luxury Layout | Investor Deal"},
-    {"project": "Safa One", "property_type": "Apartment", "price": 3050000, "area_sqft": 1229, "bedrooms": "2", "bathrooms": "3", "location": "Al Safa, Dubai", "developer": "Damac Properties", "description": "Spacious Living I Good Location I Investor Deal"},
-    {"project": "Safa One", "property_type": "Apartment", "price": 3100000, "area_sqft": 1221, "bedrooms": "2", "bathrooms": "3", "location": "Al Safa, Dubai", "developer": "Damac Properties", "description": "Investor Deal I Exclusive Luxury 2 BHK"},
-    {"project": "Safa One", "property_type": "Apartment", "price": 3100000, "area_sqft": 1231, "bedrooms": "2", "bathrooms": "3", "location": "Al Safa, Dubai", "developer": "Damac Properties", "description": "Luxurious Living I Good Location I Investor Deal"},
-    {"project": "Safa One", "property_type": "Apartment", "price": 3400000, "area_sqft": 1223, "bedrooms": "2", "bathrooms": "3", "location": "Al Safa, Dubai", "developer": "Damac Properties", "description": "Stunning View IHigh Floor |Resale w/ Payment Plan"},
-    {"project": "Safa One", "property_type": "Apartment", "price": 3528000, "area_sqft": 1616, "bedrooms": "2", "bathrooms": "2", "location": "Al Safa, Dubai", "developer": "Damac Properties", "description": "Below Original Price | Park View | Safa One"},
-    {"project": "Safa One", "property_type": "Apartment", "price": 3725000, "area_sqft": 1586, "bedrooms": "2", "bathrooms": "4", "location": "Al Safa, Dubai", "developer": "Damac Properties", "description": "10% Below Original Price | Best Views |High Floor"},
-    {"project": "Safa One", "property_type": "Apartment", "price": 3900000, "area_sqft": 1221, "bedrooms": "2", "bathrooms": "2", "location": "Al Safa, Dubai", "developer": "Damac Properties", "description": "2-BR | High Floor | Full Sea View Ultra Luxurious"},
-    {"project": "Safa One", "property_type": "Apartment", "price": 4210000, "area_sqft": 2099, "bedrooms": "2", "bathrooms": "2", "location": "Al Safa, Dubai", "developer": "Damac Properties", "description": "Prime Location| Sea Views | High ROI"},
-    {"project": "Safa One", "property_type": "Apartment", "price": 5000000, "area_sqft": 1943, "bedrooms": "2", "bathrooms": "3", "location": "Al Safa, Dubai", "developer": "Damac Properties", "description": "Spacious Living I Exclusive 2 BHK I Investor Deal"},
+    # 2 Bedroom properties
+    {"project": "Safa One", "property_type": "Apartment", "price": 2393000, "area_sqft": 1231, "bedrooms": "2", "bathrooms": "3", "location": "Al Safa 1, Dubai", "developer": "Damac Properties", "description": "Best Deal | Corner Unit | Park, Sea and Burj Views"},
+    {"project": "Safa One", "property_type": "Apartment", "price": 2393000, "area_sqft": 1231, "bedrooms": "2", "bathrooms": "3", "location": "Al Safa 1, Dubai", "developer": "Damac Properties", "description": "Exclusive Offer | High ROI | Investor Deal"},
+    {"project": "Safa One", "property_type": "Apartment", "price": 2480998, "area_sqft": 1231, "bedrooms": "2", "bathrooms": "2", "location": "Al Safa 1, Dubai", "developer": "Damac Properties", "description": "Full Sea and Burj Al Arab View | Luxury Living"},
+    {"project": "Safa One", "property_type": "Apartment", "price": 2566000, "area_sqft": 1226, "bedrooms": "2", "bathrooms": "3", "location": "Al Safa 1, Dubai", "developer": "Damac Properties", "description": "Wasl Park View | High Floor | Branded"},
+    {"project": "Safa One", "property_type": "Apartment", "price": 2600000, "area_sqft": 1222, "bedrooms": "2", "bathrooms": "3", "location": "Al Safa 1, Dubai", "developer": "Damac Properties", "description": "Exclusive Resale | 2BR in Al Safa One | Investment"},
+    {"project": "Safa One", "property_type": "Apartment", "price": 2900000, "area_sqft": 1231, "bedrooms": "2", "bathrooms": "3", "location": "Al Safa 1, Dubai", "developer": "Damac Properties", "description": "Investor Deal I Mid Floor I Modern Living"},
+    {"project": "Safa One", "property_type": "Apartment", "price": 3050000, "area_sqft": 1229, "bedrooms": "2", "bathrooms": "3", "location": "Al Safa 1, Dubai", "developer": "Damac Properties", "description": "Spacious Living I Good Location I Investor Deal"},
+    {"project": "Safa One", "property_type": "Apartment", "price": 3050000, "area_sqft": 1223, "bedrooms": "2", "bathrooms": "2", "location": "Al Safa 1, Dubai", "developer": "Damac Properties", "description": "Stunning Views | 2BR-Luxury Layout | Investor Deal"},
+    {"project": "Safa One", "property_type": "Apartment", "price": 3100000, "area_sqft": 1221, "bedrooms": "2", "bathrooms": "3", "location": "Al Safa 1, Dubai", "developer": "Damac Properties", "description": "Investor Deal I Exclusive Luxury 2 BHK"},
+    {"project": "Safa One", "property_type": "Apartment", "price": 3100000, "area_sqft": 1231, "bedrooms": "2", "bathrooms": "3", "location": "Al Safa 1, Dubai", "developer": "Damac Properties", "description": "Luxurious Living I Good Location I Investor Deal"},
+    {"project": "Safa One", "property_type": "Apartment", "price": 3400000, "area_sqft": 1223, "bedrooms": "2", "bathrooms": "3", "location": "Al Safa 1, Dubai", "developer": "Damac Properties", "description": "Stunning View IHigh Floor |Resale w/ Payment Plan"},
+    {"project": "Safa One", "property_type": "Apartment", "price": 3528000, "area_sqft": 1616, "bedrooms": "2", "bathrooms": "2", "location": "Al Safa 1, Dubai", "developer": "Damac Properties", "description": "Below Original Price | Park View | Safa One"},
+    {"project": "Safa One", "property_type": "Apartment", "price": 3725000, "area_sqft": 1586, "bedrooms": "2", "bathrooms": "4", "location": "Al Safa 1, Dubai", "developer": "Damac Properties", "description": "10% Below Original Price | Best Views |High Floor"},
+    {"project": "Safa One", "property_type": "Apartment", "price": 3900000, "area_sqft": 1221, "bedrooms": "2", "bathrooms": "2", "location": "Al Safa 1, Dubai", "developer": "Damac Properties", "description": "2-BR | High Floor | Full Sea View Ultra Luxurious"},
+    {"project": "Safa One", "property_type": "Apartment", "price": 4210000, "area_sqft": 2099, "bedrooms": "2", "bathrooms": "2", "location": "Al Safa 1, Dubai", "developer": "Damac Properties", "description": "Prime Location| Sea Views | High ROI"},
+    {"project": "Safa One", "property_type": "Apartment", "price": 5000000, "area_sqft": 1943, "bedrooms": "2", "bathrooms": "3", "location": "Al Safa 1, Dubai", "developer": "Damac Properties", "description": "Spacious Living I Exclusive 2 BHK I Investor Deal"},
     
-    # 3 Bedrooms
-    {"project": "Safa One", "property_type": "Apartment", "price": 4265508, "area_sqft": 2098, "bedrooms": "3", "bathrooms": "4", "location": "Al Safa, Dubai", "developer": "Damac Properties", "description": "Amazing View | High Floor | Selling Below Market"},
-    {"project": "Safa One", "property_type": "Apartment", "price": 5037944, "area_sqft": 2630, "bedrooms": "3", "bathrooms": "3", "location": "Al Safa, Dubai", "developer": "Damac Properties", "description": "Panoramic Sea View | Luxurious | Prime Location"},
-    {"project": "Safa One", "property_type": "Apartment", "price": 5800000, "area_sqft": 2147, "bedrooms": "3", "bathrooms": "4", "location": "Al Safa, Dubai", "developer": "Damac Properties", "description": "Luxury 3 BHK I Best in Price I Investor Deal"},
+    # 3 Bedroom properties
+    {"project": "Safa One", "property_type": "Apartment", "price": 4265508, "area_sqft": 2098, "bedrooms": "3", "bathrooms": "4", "location": "Al Safa 1, Dubai", "developer": "Damac Properties", "description": "Amazing View | High Floor | Selling Below Market"},
+    {"project": "Safa One", "property_type": "Apartment", "price": 5037944, "area_sqft": 2630, "bedrooms": "3", "bathrooms": "3", "location": "Al Safa 1, Dubai", "developer": "Damac Properties", "description": "Panoramic Sea View | Luxurious | Prime Location"},
+    {"project": "Safa One", "property_type": "Apartment", "price": 5800000, "area_sqft": 2147, "bedrooms": "3", "bathrooms": "4", "location": "Al Safa 1, Dubai", "developer": "Damac Properties", "description": "Luxury 3 BHK I Best in Price I Investor Deal"},
     
-    # 4+ Bedrooms
-    {"project": "Safa One", "property_type": "Apartment", "price": 7923000, "area_sqft": 2870, "bedrooms": "4", "bathrooms": "4", "location": "Al Safa, Dubai", "developer": "Damac Properties", "description": "Rare 4 Bed Duplex Townhouse | Full Safa Park View"},
-    {"project": "Safa One", "property_type": "Apartment", "price": 30000000, "area_sqft": 6357, "bedrooms": "4", "bathrooms": "6", "location": "Al Safa, Dubai", "developer": "Damac Properties", "description": "Full Floor Penthouse | Panoramic View | High Floor"}
+    # 4 Bedroom properties
+    {"project": "Safa One", "property_type": "Apartment", "price": 7923000, "area_sqft": 2870, "bedrooms": "4", "bathrooms": "4", "location": "Al Safa 1, Dubai", "developer": "Damac Properties", "description": "Rare 4 Bed Duplex Townhouse | Full Safa Park View"},
+    {"project": "Safa One", "property_type": "Apartment", "price": 30000000, "area_sqft": 6357, "bedrooms": "4", "bathrooms": "6", "location": "Al Safa 1, Dubai", "developer": "Damac Properties", "description": "Full Floor Penthouse | Panoramic View | High Floor"}
 ]
 
-# Combine both datasets
-COMBINED_DATA = SAFA_ONE_DATA + SAFA_TWO_DATA
+# Project information
+PROJECT_INFO = {
+    "Safa One": {
+        "location": "Al Safa 1, Dubai",
+        "developer": "Damac Properties",
+        "delivery_date": "Q2 2026",
+        "sales_started": "September 2022",
+        "construction_progress": "5.86%",
+        "payment_plan": "20/40/40",
+        "description": "Safa One by de GRISOGONO is an ultra-luxury residential project featuring one of the highest hanging gardens in the world. Located in the prestigious Al Safa area along Sheikh Zayed Road, it offers stunning views of Burj Al Arab, Palm Jumeirah, and Dubai's iconic skyline.",
+        "features": ["Hanging gardens", "Infinity pool", "Luxury spa", "Private beach access", "24/7 concierge", "Smart home technology", "Branded interiors by de GRISOGONO"]
+    },
+    "Safa Two": {
+        "location": "Business Bay, Dubai",
+        "developer": "Damac Properties",
+        "delivery_date": "Q2 2027",
+        "sales_started": "March 2023",
+        "construction_progress": "3.25%",
+        "payment_plan": "20/55/25",
+        "description": "Safa Two is a luxury residential development in Business Bay featuring de GRISOGONO interiors. The twin-tower project offers premium units with breathtaking views of Dubai Canal, Burj Khalifa, and the city skyline.",
+        "features": ["Luxury branded residences", "Premium views", "Infinity pools", "Spa and wellness center", "Fitness facilities", "Kids play area", "De GRISOGONO interiors"]
+    }
+}
 
-def analyze_data(property_data, project_filter=None):
-    """Analyze the property data with optional project filter"""
-    # Filter by project if specified
-    if project_filter and project_filter != "All":
-        df = pd.DataFrame([p for p in property_data if p['project'] == project_filter])
-    else:
-        df = pd.DataFrame(property_data)
+def analyze_data(property_data):
+    """Analyze the property data"""
+    # Convert to DataFrame
+    df = pd.DataFrame(property_data)
     
     # Calculate price per sqft
     df['price_per_sqft'] = df['price'] / df['area_sqft']
@@ -189,7 +104,7 @@ def analyze_data(property_data, project_filter=None):
     
     # Sort by bedrooms (with studio first, then numeric)
     bedroom_order = {'studio': 0, '1': 1, '2': 2, '3': 3, '4': 4}
-    bedroom_stats['bedroom_order'] = bedroom_stats['bedrooms'].map(lambda x: bedroom_order.get(x, 5))
+    bedroom_stats['bedroom_order'] = bedroom_stats['bedrooms'].map(bedroom_order)
     bedroom_stats = bedroom_stats.sort_values('bedroom_order').drop('bedroom_order', axis=1)
     
     # Statistics by bathroom count
@@ -204,102 +119,99 @@ def analyze_data(property_data, project_filter=None):
                              'min_area', 'max_area', 'avg_area', 'avg_price_per_sqft']
     
     # Sort by bedrooms and bathrooms
-    bathroom_stats['bedroom_order'] = bathroom_stats['bedrooms'].map(lambda x: bedroom_order.get(x, 5))
+    bathroom_stats['bedroom_order'] = bathroom_stats['bedrooms'].map(bedroom_order)
     bathroom_stats = bathroom_stats.sort_values(['bedroom_order', 'bathrooms']).drop('bedroom_order', axis=1)
-    
-    # Project comparison (if not filtered)
-    project_comparison = None
-    if not project_filter or project_filter == "All":
-        project_comparison = df.groupby('project').agg({
-            'price': ['count', 'min', 'max', 'mean', 'median'],
-            'area_sqft': ['min', 'max', 'mean'],
-            'price_per_sqft': ['min', 'max', 'mean']
-        }).reset_index()
-        
-        # Rename columns for clarity
-        project_comparison.columns = ['project', 'count', 'min_price', 'max_price', 'avg_price', 'median_price', 
-                                    'min_area', 'max_area', 'avg_area', 'min_price_per_sqft', 
-                                    'max_price_per_sqft', 'avg_price_per_sqft']
     
     return {
         'dataframe': df,
         'stats_overall': stats_overall,
         'bedroom_stats': bedroom_stats,
-        'bathroom_stats': bathroom_stats,
-        'project_comparison': project_comparison
+        'bathroom_stats': bathroom_stats
     }
 
-def generate_visualizations(analysis_results, project_filter=None):
-    """Generate visualizations from analysis results"""
+def generate_visualizations(analysis_results, project_name):
+    """Generate Plotly visualizations from analysis results"""
     if not analysis_results or 'dataframe' not in analysis_results:
         return {}
         
     df = analysis_results['dataframe']
     figures = {}
     
-    # Set the style
-    sns.set(style="whitegrid")
+    # Use a professional color palette
+    colors = {
+        'primary': '#1E3A8A',
+        'secondary': '#3B82F6',
+        'accent': '#EF4444',
+        'light': '#EFF6FF',
+        'dark': '#1F2937',
+        'studio': '#6366F1',
+        '1': '#3B82F6',
+        '2': '#10B981',
+        '3': '#F59E0B',
+        '4': '#EF4444'
+    }
     
     # Price distribution by bedroom type
     try:
-        fig_price, ax_price = plt.subplots(figsize=(12, 6))
-        
-        # Create a box plot for price by bedroom type
         bedroom_order = ['studio', '1', '2', '3', '4']
-        valid_bedrooms = [b for b in bedroom_order if b in df['bedrooms'].unique()]
-        sns.boxplot(x='bedrooms', y='price', data=df, order=valid_bedrooms, ax=ax_price)
+        present_bedroom_types = [b for b in bedroom_order if b in df['bedrooms'].unique()]
+        
+        fig_price = px.box(
+            df, 
+            x='bedrooms', 
+            y='price', 
+            color='bedrooms',
+            category_orders={'bedrooms': present_bedroom_types},
+            title=f'Price Distribution by Bedroom Type - {project_name}',
+            labels={'price': 'Price (AED)', 'bedrooms': 'Bedrooms'},
+            color_discrete_map={b: colors.get(b, colors['primary']) for b in present_bedroom_types}
+        )
+        
+        # Format axes and layout
+        fig_price.update_layout(
+            font_family="Arial",
+            title_font_size=20,
+            title_font_color=colors['primary'],
+            legend_title_font_color=colors['primary'],
+            plot_bgcolor=colors['light'],
+            paper_bgcolor='white',
+            height=500
+        )
         
         # Format y-axis to show in millions
-        ax_price.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, loc: f"{x/1000000:.1f}M"))
-        
-        title = f'Price Distribution by Bedroom Type'
-        if project_filter and project_filter != "All":
-            title += f' - {project_filter}'
-            
-        ax_price.set_title(title, fontsize=14)
-        ax_price.set_xlabel('Bedrooms', fontsize=12)
-        ax_price.set_ylabel('Price (AED)', fontsize=12)
-        plt.tight_layout()
+        fig_price.update_yaxes(tickformat=',', title_font=dict(size=14, color=colors['dark']))
+        fig_price.update_xaxes(title_font=dict(size=14, color=colors['dark']))
         
         figures['price_by_bedroom'] = fig_price
     except Exception as e:
         st.error(f"Error generating price by bedroom chart: {e}")
     
-    # Price distribution by project
-    if not project_filter or project_filter == "All":
-        try:
-            fig_project, ax_project = plt.subplots(figsize=(12, 6))
-            
-            # Create a violin plot for price by project
-            sns.violinplot(x='project', y='price', data=df, ax=ax_project)
-            
-            # Format y-axis to show in millions
-            ax_project.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, loc: f"{x/1000000:.1f}M"))
-            
-            ax_project.set_title('Price Distribution by Project', fontsize=14)
-            ax_project.set_xlabel('Project', fontsize=12)
-            ax_project.set_ylabel('Price (AED)', fontsize=12)
-            plt.tight_layout()
-            
-            figures['price_by_project'] = fig_project
-        except Exception as e:
-            st.error(f"Error generating price by project chart: {e}")
-    
     # Area distribution by bedroom type
     try:
-        fig_area, ax_area = plt.subplots(figsize=(12, 6))
+        fig_area = px.box(
+            df, 
+            x='bedrooms', 
+            y='area_sqft', 
+            color='bedrooms',
+            category_orders={'bedrooms': present_bedroom_types},
+            title=f'Area Distribution by Bedroom Type - {project_name}',
+            labels={'area_sqft': 'Area (sq.ft)', 'bedrooms': 'Bedrooms'},
+            color_discrete_map={b: colors.get(b, colors['primary']) for b in present_bedroom_types}
+        )
         
-        # Create a box plot for area by bedroom type
-        sns.boxplot(x='bedrooms', y='area_sqft', data=df, order=valid_bedrooms, ax=ax_area)
+        # Format axes and layout
+        fig_area.update_layout(
+            font_family="Arial",
+            title_font_size=20,
+            title_font_color=colors['primary'],
+            legend_title_font_color=colors['primary'],
+            plot_bgcolor=colors['light'],
+            paper_bgcolor='white',
+            height=500
+        )
         
-        title = f'Area Distribution by Bedroom Type'
-        if project_filter and project_filter != "All":
-            title += f' - {project_filter}'
-            
-        ax_area.set_title(title, fontsize=14)
-        ax_area.set_xlabel('Bedrooms', fontsize=12)
-        ax_area.set_ylabel('Area (sq.ft)', fontsize=12)
-        plt.tight_layout()
+        fig_area.update_yaxes(tickformat=',', title_font=dict(size=14, color=colors['dark']))
+        fig_area.update_xaxes(title_font=dict(size=14, color=colors['dark']))
         
         figures['area_by_bedroom'] = fig_area
     except Exception as e:
@@ -307,128 +219,114 @@ def generate_visualizations(analysis_results, project_filter=None):
     
     # Price per sq.ft by bedroom type
     try:
-        fig_ppsf, ax_ppsf = plt.subplots(figsize=(12, 6))
+        fig_ppsf = px.box(
+            df, 
+            x='bedrooms', 
+            y='price_per_sqft', 
+            color='bedrooms',
+            category_orders={'bedrooms': present_bedroom_types},
+            title=f'Price per Sq.Ft by Bedroom Type - {project_name}',
+            labels={'price_per_sqft': 'Price per Sq.Ft (AED)', 'bedrooms': 'Bedrooms'},
+            color_discrete_map={b: colors.get(b, colors['primary']) for b in present_bedroom_types}
+        )
         
-        # Create a box plot for price per sq.ft by bedroom type
-        sns.boxplot(x='bedrooms', y='price_per_sqft', data=df, order=valid_bedrooms, ax=ax_ppsf)
+        # Format axes and layout
+        fig_ppsf.update_layout(
+            font_family="Arial",
+            title_font_size=20,
+            title_font_color=colors['primary'],
+            legend_title_font_color=colors['primary'],
+            plot_bgcolor=colors['light'],
+            paper_bgcolor='white',
+            height=500
+        )
         
-        title = f'Price per Sq.Ft by Bedroom Type'
-        if project_filter and project_filter != "All":
-            title += f' - {project_filter}'
-            
-        ax_ppsf.set_title(title, fontsize=14)
-        ax_ppsf.set_xlabel('Bedrooms', fontsize=12)
-        ax_ppsf.set_ylabel('Price per Sq.Ft (AED)', fontsize=12)
-        plt.tight_layout()
+        fig_ppsf.update_yaxes(tickformat=',', title_font=dict(size=14, color=colors['dark']))
+        fig_ppsf.update_xaxes(title_font=dict(size=14, color=colors['dark']))
         
         figures['ppsf_by_bedroom'] = fig_ppsf
     except Exception as e:
         st.error(f"Error generating price per sq.ft by bedroom chart: {e}")
     
-    # Price per sq.ft by project
-    if not project_filter or project_filter == "All":
-        try:
-            fig_ppsf_project, ax_ppsf_project = plt.subplots(figsize=(12, 6))
-            
-            # Create a box plot for price per sq.ft by project
-            sns.boxplot(x='project', y='price_per_sqft', data=df, ax=ax_ppsf_project)
-            
-            ax_ppsf_project.set_title('Price per Sq.Ft by Project', fontsize=14)
-            ax_ppsf_project.set_xlabel('Project', fontsize=12)
-            ax_ppsf_project.set_ylabel('Price per Sq.Ft (AED)', fontsize=12)
-            plt.tight_layout()
-            
-            figures['ppsf_by_project'] = fig_ppsf_project
-        except Exception as e:
-            st.error(f"Error generating price per sq.ft by project chart: {e}")
-    
     # Distribution of price per sq.ft overall
     try:
-        fig_ppsf_dist, ax_ppsf_dist = plt.subplots(figsize=(12, 6))
+        fig_ppsf_dist = px.histogram(
+            df, 
+            x='price_per_sqft', 
+            nbins=20,
+            title=f'Distribution of Price per Sq.Ft - {project_name}',
+            labels={'price_per_sqft': 'Price per Sq.Ft (AED)', 'count': 'Number of Properties'},
+            opacity=0.8,
+            color_discrete_sequence=[colors['primary']]
+        )
         
-        # Create a histogram with KDE for price per sq.ft
-        sns.histplot(df['price_per_sqft'], kde=True, ax=ax_ppsf_dist)
-        
-        title = f'Distribution of Price per Sq.Ft'
-        if project_filter and project_filter != "All":
-            title += f' - {project_filter}'
-            
-        ax_ppsf_dist.set_title(title, fontsize=14)
-        ax_ppsf_dist.set_xlabel('Price per Sq.Ft (AED)', fontsize=12)
-        ax_ppsf_dist.set_ylabel('Count', fontsize=12)
+        # Add a KDE curve
+        fig_ppsf_dist.update_traces(histnorm='probability density')
         
         # Add a vertical line for the mean
         mean_ppsf = df['price_per_sqft'].mean()
-        ax_ppsf_dist.axvline(mean_ppsf, color='red', linestyle='dashed', linewidth=2)
-        ax_ppsf_dist.text(mean_ppsf*1.05, ax_ppsf_dist.get_ylim()[1]*0.9, f'Mean: {mean_ppsf:.0f} AED', 
-                       color='red', fontweight='bold')
+        fig_ppsf_dist.add_vline(
+            x=mean_ppsf, 
+            line_dash="dash", 
+            line_color=colors['accent'],
+            annotation_text=f"Mean: {mean_ppsf:,.0f} AED",
+            annotation_position="top right",
+            annotation_font_color=colors['accent'],
+            annotation_font_size=14
+        )
         
-        plt.tight_layout()
+        # Format axes and layout
+        fig_ppsf_dist.update_layout(
+            font_family="Arial",
+            title_font_size=20,
+            title_font_color=colors['primary'],
+            plot_bgcolor=colors['light'],
+            paper_bgcolor='white',
+            height=500
+        )
+        
+        fig_ppsf_dist.update_xaxes(tickformat=',', title_font=dict(size=14, color=colors['dark']))
+        fig_ppsf_dist.update_yaxes(title_font=dict(size=14, color=colors['dark']))
+        
         figures['ppsf_distribution'] = fig_ppsf_dist
     except Exception as e:
         st.error(f"Error generating price per sq.ft distribution chart: {e}")
     
     # Scatter plot of price vs. area
     try:
-        fig_scatter, ax_scatter = plt.subplots(figsize=(12, 6))
+        fig_scatter = px.scatter(
+            df, 
+            x='area_sqft', 
+            y='price', 
+            color='bedrooms',
+            category_orders={'bedrooms': present_bedroom_types},
+            title=f'Price vs. Area - {project_name}',
+            labels={'price': 'Price (AED)', 'area_sqft': 'Area (sq.ft)', 'bedrooms': 'Bedrooms'},
+            color_discrete_map={b: colors.get(b, colors['primary']) for b in present_bedroom_types},
+            trendline='ols',
+            opacity=0.8,
+            size_max=15
+        )
         
-        # Create scatter plot with different colors for bedroom types
-        for bed_type in valid_bedrooms:
-            bed_data = df[df['bedrooms'] == bed_type]
-            ax_scatter.scatter(bed_data['area_sqft'], bed_data['price'], 
-                          label=f"{bed_type} BR", alpha=0.7)
+        # Format axes and layout
+        fig_scatter.update_layout(
+            font_family="Arial",
+            title_font_size=20,
+            title_font_color=colors['primary'],
+            legend_title_font_color=colors['primary'],
+            plot_bgcolor=colors['light'],
+            paper_bgcolor='white',
+            height=500
+        )
         
-        # Add best fit line
-        sns.regplot(x='area_sqft', y='price', data=df, scatter=False, ax=ax_scatter, color='black')
-        
-        # Format y-axis to show in millions
-        ax_scatter.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, loc: f"{x/1000000:.1f}M"))
-        
-        title = f'Price vs. Area'
-        if project_filter and project_filter != "All":
-            title += f' - {project_filter}'
-            
-        ax_scatter.set_title(title, fontsize=14)
-        ax_scatter.set_xlabel('Area (sq.ft)', fontsize=12)
-        ax_scatter.set_ylabel('Price (AED)', fontsize=12)
-        ax_scatter.legend(title="Bedrooms")
-        plt.tight_layout()
+        fig_scatter.update_yaxes(tickformat=',', title_font=dict(size=14, color=colors['dark']))
+        fig_scatter.update_xaxes(tickformat=',', title_font=dict(size=14, color=colors['dark']))
         
         figures['price_vs_area'] = fig_scatter
     except Exception as e:
         st.error(f"Error generating price vs. area chart: {e}")
-        
-    # If comparing projects, add scatter plot with project differentiation
-    if not project_filter or project_filter == "All":
-        try:
-            fig_scatter_project, ax_scatter_project = plt.subplots(figsize=(12, 6))
-            
-            # Create scatter plot with different colors for projects
-            for project in df['project'].unique():
-                project_data = df[df['project'] == project]
-                ax_scatter_project.scatter(project_data['area_sqft'], project_data['price'], 
-                                      label=project, alpha=0.7)
-            
-            # Format y-axis to show in millions
-            ax_scatter_project.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, loc: f"{x/1000000:.1f}M"))
-            
-            ax_scatter_project.set_title('Price vs. Area by Project', fontsize=14)
-            ax_scatter_project.set_xlabel('Area (sq.ft)', fontsize=12)
-            ax_scatter_project.set_ylabel('Price (AED)', fontsize=12)
-            ax_scatter_project.legend(title="Project")
-            plt.tight_layout()
-            
-            figures['price_vs_area_by_project'] = fig_scatter_project
-        except Exception as e:
-            st.error(f"Error generating price vs. area by project chart: {e}")
     
     return figures
-
-def save_to_csv(df, filename):
-    """Save DataFrame to CSV"""
-    filepath = os.path.join(RESULTS_DIR, filename)
-    df.to_csv(filepath, index=False)
-    return filepath
 
 def format_currency(value):
     """Format currency values for display"""
@@ -448,69 +346,76 @@ def format_area(value):
         return f"{value:,.0f} sq.ft"
     return value
 
-# Main function to run the Streamlit app
-def main():
-    st.title("Damac Safa One & Two Property Analysis")
-    st.markdown("### A comprehensive analysis of Damac's Safa One and Safa Two developments in Dubai")
+def display_project_info(project, project_data):
+    """Display project information in a stylish card"""
+    col1, col2 = st.columns([2, 3])
     
-    # Project selection
-    project_filter = st.selectbox(
-        "Select Project to Analyze",
-        ["All", "Safa One", "Safa Two"]
-    )
+    with col1:
+        st.markdown(f"""
+        <div class="info-box">
+            <h3 style="color: #1E3A8A; margin-bottom: 15px;">{project} at a Glance</h3>
+            <p><span class="highlight">Location:</span> {project_data['location']}</p>
+            <p><span class="highlight">Developer:</span> {project_data['developer']}</p>
+            <p><span class="highlight">Expected Delivery:</span> {project_data['delivery_date']}</p>
+            <p><span class="highlight">Construction Progress:</span> {project_data['construction_progress']}</p>
+            <p><span class="highlight">Payment Plan:</span> {project_data['payment_plan']}</p>
+        </div>
+        """, unsafe_allow_html=True)
     
-    # Analyze data based on selection
-    if project_filter == "All":
-        analysis_results = analyze_data(COMBINED_DATA)
-        project_title = "Safa One & Two Combined"
-    elif project_filter == "Safa One":
-        analysis_results = analyze_data(SAFA_ONE_DATA)
-        project_title = "Safa One"
-    else:  # Safa Two
-        analysis_results = analyze_data(SAFA_TWO_DATA)
-        project_title = "Safa Two"
+    with col2:
+        st.markdown(f"""
+        <div class="info-box">
+            <h3 style="color: #1E3A8A; margin-bottom: 15px;">About {project}</h3>
+            <p>{project_data['description']}</p>
+            <h4 style="color: #1E3A8A; margin-top: 15px; margin-bottom: 10px;">Key Features</h4>
+            <ul style="margin-top: 0;">
+                {"".join([f"<li>{feature}</li>" for feature in project_data['features']])}
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+
+def display_project_analysis(project_name, property_data):
+    """Display analysis for a specific project"""
+    # Analyze data
+    analysis_results = analyze_data(property_data)
     
-    # Save to CSV
-    csv_filename = f"{project_filter.replace(' ', '_').lower()}_properties.csv"
-    csv_path = save_to_csv(analysis_results['dataframe'], csv_filename)
-    
-    # Display project overview
-    st.header(f"{project_title} Overview")
+    # Display overall statistics
     stats = analysis_results['stats_overall']
+    
+    st.markdown(f'<div class="sub-header">Overview</div>', unsafe_allow_html=True)
     
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        st.metric("Total Listings", stats['total_listings'])
+        st.markdown(f"""
+        <div class="metric-card">
+            <div class="metric-value">{stats['total_listings']}</div>
+            <div class="metric-label">Total Listings</div>
+        </div>
+        """, unsafe_allow_html=True)
     with col2:
-        st.metric("Average Price", format_currency(stats['avg_price']))
+        st.markdown(f"""
+        <div class="metric-card">
+            <div class="metric-value">{format_currency(stats['avg_price'])}</div>
+            <div class="metric-label">Average Price</div>
+        </div>
+        """, unsafe_allow_html=True)
     with col3:
-        st.metric("Price Range", f"{format_currency(stats['min_price'])} - {format_currency(stats['max_price'])}")
+        st.markdown(f"""
+        <div class="metric-card">
+            <div class="metric-value">{format_area(stats['avg_area'])}</div>
+            <div class="metric-label">Average Area</div>
+        </div>
+        """, unsafe_allow_html=True)
     with col4:
-        st.metric("Average Price/sq.ft", f"AED {stats['avg_price_per_sqft']:,.0f}")
-    
-    # Project comparison if showing both
-    if project_filter == "All" and analysis_results['project_comparison'] is not None:
-        st.header("Project Comparison")
-        
-        # Format the project comparison table
-        project_comp = analysis_results['project_comparison'].copy()
-        for col in ['min_price', 'max_price', 'avg_price', 'median_price']:
-            project_comp[col] = project_comp[col].apply(format_currency)
-        
-        for col in ['min_area', 'max_area', 'avg_area']:
-            project_comp[col] = project_comp[col].apply(format_area)
-        
-        for col in ['min_price_per_sqft', 'max_price_per_sqft', 'avg_price_per_sqft']:
-            project_comp[col] = project_comp[col].apply(lambda x: f"AED {x:,.0f}")
-        
-        project_comp.columns = ['Project', 'Count', 'Min Price', 'Max Price', 'Avg Price', 'Median Price', 
-                              'Min Area', 'Max Area', 'Avg Area', 'Min Price/sq.ft', 
-                              'Max Price/sq.ft', 'Avg Price/sq.ft']
-        
-        st.table(project_comp)
+        st.markdown(f"""
+        <div class="metric-card">
+            <div class="metric-value">AED {stats['avg_price_per_sqft']:,.0f}</div>
+            <div class="metric-label">Average Price/sq.ft</div>
+        </div>
+        """, unsafe_allow_html=True)
     
     # Statistics by bedroom type
-    st.header("Unit Types Summary")
+    st.markdown(f'<div class="sub-header">Unit Types Summary</div>', unsafe_allow_html=True)
     
     # Format the bedroom statistics table
     bedroom_stats = analysis_results['bedroom_stats'].copy()
@@ -527,102 +432,101 @@ def main():
                            'Min Area', 'Max Area', 'Avg Area', 'Min Price/sq.ft', 
                            'Max Price/sq.ft', 'Avg Price/sq.ft']
     
+    st.markdown('<div class="data-table">', unsafe_allow_html=True)
     st.table(bedroom_stats)
+    st.markdown('</div>', unsafe_allow_html=True)
     
     # Create simplified unit type summary box
-    st.subheader("Simplified Unit Types")
+    st.markdown(f'<div class="sub-header">Simplified Unit Types</div>', unsafe_allow_html=True)
     
-    # Extract data for each bedroom type
-    bedroom_types = []
-    size_ranges = []
-    price_ranges = []
-    avg_price_per_sqft = []
-    available_units = []
-    
-    for index, row in analysis_results['bedroom_stats'].iterrows():
-        bedroom_type = "Studio" if row['bedrooms'] == 'studio' else f"{row['bedrooms']} Bedroom"
-        bedroom_types.append(bedroom_type)
-        
-        size_ranges.append(f"{row['min_area']:.0f} - {row['max_area']:.0f} sq.ft")
-        price_ranges.append(f"AED {row['min_price']/1000000:.2f}M - {row['max_price']/1000000:.2f}M")
-        avg_price_per_sqft.append(f"AED {row['avg_price_per_sqft']:.0f}")
-        available_units.append(f"{row['count']:.0f}")
-    
+    # Create a simplified dataframe for the unit types
     simplified_df = pd.DataFrame({
-        'Unit Type': bedroom_types,
-        'Size Range (sq.ft)': size_ranges,
-        'Price Range (AED)': price_ranges,
-        'Average Price/sq.ft': avg_price_per_sqft,
-        'Available Units': available_units
+        'Unit Type': [],
+        'Size Range (sq.ft)': [],
+        'Price Range (AED)': [],
+        'Average Price/sq.ft': [],
+        'Available Units': []
     })
     
+    # Add row for each bedroom type if it exists in the data
+    for bed_type in ['studio', '1', '2', '3', '4']:
+        if bed_type in analysis_results['bedroom_stats']['bedrooms'].values:
+            bed_data = analysis_results['bedroom_stats'][analysis_results['bedroom_stats']['bedrooms'] == bed_type]
+            
+            # Format the bedroom display name
+            if bed_type == 'studio':
+                display_name = 'Studio'
+            else:
+                display_name = f"{bed_type} Bedroom"
+                
+            # Create a new row
+            new_row = pd.DataFrame({
+                'Unit Type': [display_name],
+                'Size Range (sq.ft)': [f"{bed_data['min_area'].values[0]:.0f} - {bed_data['max_area'].values[0]:.0f}"],
+                'Price Range (AED)': [f"AED {bed_data['min_price'].values[0]/1000000:.2f}M - {bed_data['max_price'].values[0]/1000000:.2f}M"],
+                'Average Price/sq.ft': [f"AED {bed_data['avg_price_per_sqft'].values[0]:.0f}"],
+                'Available Units': [f"{bed_data['count'].values[0]:.0f}"]
+            })
+            
+            # Append to simplified dataframe
+            simplified_df = pd.concat([simplified_df, new_row], ignore_index=True)
+    
+    st.markdown('<div class="data-table">', unsafe_allow_html=True)
     st.table(simplified_df)
+    st.markdown('</div>', unsafe_allow_html=True)
     
     # Generate and display visualizations
-    st.header("Visualizations")
-    figures = generate_visualizations(analysis_results, project_filter)
+    st.markdown(f'<div class="sub-header">Visualizations</div>', unsafe_allow_html=True)
+    figures = generate_visualizations(analysis_results, project_name)
     
-    # Display price by project chart (if applicable)
-    if 'price_by_project' in figures:
-        st.subheader("Price Distribution by Project")
-        st.pyplot(figures['price_by_project'])
+    # Display visualizations in tabs
+    tab1, tab2, tab3, tab4 = st.tabs(["Price Analysis", "Area Analysis", "Price per Sq.Ft", "Price vs Area"])
     
-    # Display price by bedroom chart
-    if 'price_by_bedroom' in figures:
-        st.subheader("Price Distribution by Bedroom Type")
-        st.pyplot(figures['price_by_bedroom'])
+    with tab1:
+        st.markdown('<div class="tab-content">', unsafe_allow_html=True)
+        if 'price_by_bedroom' in figures:
+            st.plotly_chart(figures['price_by_bedroom'], use_container_width=True)
+        st.markdown('</div>', unsafe_allow_html=True)
     
-    # Display area by bedroom chart
-    if 'area_by_bedroom' in figures:
-        st.subheader("Area Distribution by Bedroom Type")
-        st.pyplot(figures['area_by_bedroom'])
+    with tab2:
+        st.markdown('<div class="tab-content">', unsafe_allow_html=True)
+        if 'area_by_bedroom' in figures:
+            st.plotly_chart(figures['area_by_bedroom'], use_container_width=True)
+        st.markdown('</div>', unsafe_allow_html=True)
     
-    # Display price per sq.ft by bedroom chart
-    if 'ppsf_by_bedroom' in figures:
-        st.subheader("Price per Sq.Ft by Bedroom Type")
-        st.pyplot(figures['ppsf_by_bedroom'])
+    with tab3:
+        st.markdown('<div class="tab-content">', unsafe_allow_html=True)
+        if 'ppsf_by_bedroom' in figures:
+            st.plotly_chart(figures['ppsf_by_bedroom'], use_container_width=True)
         
-    # Display price per sq.ft by project chart (if applicable)
-    if 'ppsf_by_project' in figures:
-        st.subheader("Price per Sq.Ft by Project")
-        st.pyplot(figures['ppsf_by_project'])
+        if 'ppsf_distribution' in figures:
+            st.plotly_chart(figures['ppsf_distribution'], use_container_width=True)
+        st.markdown('</div>', unsafe_allow_html=True)
     
-    # Display price per sq.ft distribution chart
-    if 'ppsf_distribution' in figures:
-        st.subheader("Distribution of Price per Sq.Ft")
-        st.pyplot(figures['ppsf_distribution'])
-    
-    # Display price vs. area scatter plot
-    if 'price_vs_area' in figures:
-        st.subheader("Price vs. Area")
-        st.pyplot(figures['price_vs_area'])
-        
-    # Display price vs. area by project scatter plot (if applicable)
-    if 'price_vs_area_by_project' in figures:
-        st.subheader("Price vs. Area by Project")
-        st.pyplot(figures['price_vs_area_by_project'])
+    with tab4:
+        st.markdown('<div class="tab-content">', unsafe_allow_html=True)
+        if 'price_vs_area' in figures:
+            st.plotly_chart(figures['price_vs_area'], use_container_width=True)
+        st.markdown('</div>', unsafe_allow_html=True)
     
     # Property listings
-    st.header("Property Listings")
+    st.markdown(f'<div class="sub-header">Property Listings</div>', unsafe_allow_html=True)
     
     # Add filters
-    col1, col2, col3 = st.columns(3)
+    col1, col2 = st.columns(2)
     with col1:
-        bedroom_filter = st.selectbox("Filter by Bedrooms", 
-                                   ["All"] + sorted(analysis_results['dataframe']['bedrooms'].unique().tolist(), 
-                                                  key=lambda x: 0 if x == 'studio' else int(x)))
+        bedroom_filter = st.selectbox(f"Filter {project_name} by Bedrooms", 
+                                     ["All"] + list(analysis_results['dataframe']['bedrooms'].unique()),
+                                     key=f"{project_name}_bedroom_filter")
     with col2:
-        bathroom_filter = st.selectbox("Filter by Bathrooms", 
-                                    ["All"] + sorted(analysis_results['dataframe']['bathrooms'].unique().tolist()))
-    with col3:
-        price_sort = st.selectbox("Sort by Price", ["Low to High", "High to Low"])
+        price_sort = st.selectbox(f"Sort {project_name} by Price", 
+                                 ["Low to High", "High to Low"],
+                                 key=f"{project_name}_price_sort")
     
     # Apply filters and sorting
     filtered_df = analysis_results['dataframe']
     if bedroom_filter != "All":
         filtered_df = filtered_df[filtered_df['bedrooms'] == bedroom_filter]
-    if bathroom_filter != "All":
-        filtered_df = filtered_df[filtered_df['bathrooms'] == bathroom_filter]
     
     if price_sort == "Low to High":
         filtered_df = filtered_df.sort_values('price')
@@ -636,83 +540,343 @@ def main():
     display_df['price_per_sqft'] = display_df['price_per_sqft'].apply(lambda x: f"AED {x:,.0f}")
     
     # Select columns for display
-    display_df = display_df[['project', 'bedrooms', 'bathrooms', 'price', 'area_sqft', 'price_per_sqft', 'description']]
-    display_df.columns = ['Project', 'Bedrooms', 'Bathrooms', 'Price', 'Area', 'Price/sq.ft', 'Description']
+    display_df = display_df[['bedrooms', 'bathrooms', 'price', 'area_sqft', 'price_per_sqft', 'description']]
+    display_df.columns = ['Bedrooms', 'Bathrooms', 'Price', 'Area', 'Price/sq.ft', 'Description']
     
     st.dataframe(display_df, use_container_width=True)
+
+def display_comparison(safa_one_analysis, safa_two_analysis):
+    """Display comparison between Safa One and Safa Two"""
+    st.markdown('<div class="sub-header">Project Comparison</div>', unsafe_allow_html=True)
     
-    # Download link for CSV
-    st.download_button(
-        label="Download Complete Data as CSV",
-        data=open(csv_path, 'rb').read(),
-        file_name=csv_filename,
-        mime="text/csv"
+    # Price comparison
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("""
+        <div class="metric-card">
+            <h3 style="color: #1E3A8A; margin-bottom: 10px;">Safa One Averages</h3>
+        """, unsafe_allow_html=True)
+        
+        safa_one_stats = safa_one_analysis['stats_overall']
+        st.markdown(f"""
+            <p><span class="highlight">Average Price:</span> {format_currency(safa_one_stats['avg_price'])}</p>
+            <p><span class="highlight">Average Area:</span> {format_area(safa_one_stats['avg_area'])}</p>
+            <p><span class="highlight">Average Price/sq.ft:</span> AED {safa_one_stats['avg_price_per_sqft']:,.0f}</p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col2:
+        st.markdown("""
+        <div class="metric-card">
+            <h3 style="color: #1E3A8A; margin-bottom: 10px;">Safa Two Averages</h3>
+        """, unsafe_allow_html=True)
+        
+        safa_two_stats = safa_two_analysis['stats_overall']
+        st.markdown(f"""
+            <p><span class="highlight">Average Price:</span> {format_currency(safa_two_stats['avg_price'])}</p>
+            <p><span class="highlight">Average Area:</span> {format_area(safa_two_stats['avg_area'])}</p>
+            <p><span class="highlight">Average Price/sq.ft:</span> AED {safa_two_stats['avg_price_per_sqft']:,.0f}</p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # Compare price per sqft by bedroom type
+    st.markdown('<h3 style="color: #1E3A8A; margin-top: 20px;">Price per Sq.Ft Comparison by Bedroom Type</h3>', unsafe_allow_html=True)
+    
+    # Create comparison dataframe
+    comparison_data = []
+    
+    # Process Safa One data
+    for _, row in safa_one_analysis['bedroom_stats'].iterrows():
+        bedroom_type = row['bedrooms']
+        comparison_data.append({
+            'Project': 'Safa One',
+            'Bedroom Type': 'Studio' if bedroom_type == 'studio' else f"{bedroom_type} Bedroom",
+            'Avg Price/sq.ft': row['avg_price_per_sqft'],
+            'Min Price/sq.ft': row['min_price_per_sqft'],
+            'Max Price/sq.ft': row['max_price_per_sqft']
+        })
+    
+    # Process Safa Two data
+    for _, row in safa_two_analysis['bedroom_stats'].iterrows():
+        bedroom_type = row['bedrooms']
+        comparison_data.append({
+            'Project': 'Safa Two',
+            'Bedroom Type': 'Studio' if bedroom_type == 'studio' else f"{bedroom_type} Bedroom",
+            'Avg Price/sq.ft': row['avg_price_per_sqft'],
+            'Min Price/sq.ft': row['min_price_per_sqft'],
+            'Max Price/sq.ft': row['max_price_per_sqft']
+        })
+    
+    comparison_df = pd.DataFrame(comparison_data)
+    
+    # Create comparison chart
+    fig = px.bar(
+        comparison_df, 
+        x='Bedroom Type', 
+        y='Avg Price/sq.ft', 
+        color='Project',
+        barmode='group',
+        title='Average Price per Sq.Ft Comparison',
+        labels={'Avg Price/sq.ft': 'Average Price per Sq.Ft (AED)'},
+        color_discrete_map={'Safa One': '#1E3A8A', 'Safa Two': '#3B82F6'}
     )
     
-    # Project information
-    st.header("About Damac Safa Projects")
+    # Format axes and layout
+    fig.update_layout(
+        font_family="Arial",
+        title_font_size=20,
+        title_font_color='#1E3A8A',
+        legend_title_font_color='#1E3A8A',
+        plot_bgcolor='#EFF6FF',
+        paper_bgcolor='white',
+        height=500
+    )
     
-    if project_filter == "All" or project_filter == "Safa One":
-        st.subheader("Damac Safa One")
-        st.markdown("""
-        Damac Safa One is a luxury residential development by Damac Properties located in Al Safa, Dubai.
-        
-        ### Key Information:
-        - **Developer**: Damac Properties
-        - **Location**: Al Safa, Dubai
-        - **Expected Completion**: Q2 2026
-        - **Unit Types**: 1, 2, 3 and 4 Bedroom Apartments, including penthouses
-        - **Payment Plan**: 20/40/40 or other flexible plans available
-        
-        ### Key Features:
-        - Luxury branded residences with Italian design
-        - Premium views of Burj Al Arab, sea views, and Safa Park
-        - High-end amenities including infinity pools, spa, fitness center
-        - Prime location near major attractions and business hubs
-        """)
+    fig.update_yaxes(tickformat=',', title_font=dict(size=14, color='#1F2937'))
+    fig.update_xaxes(title_font=dict(size=14, color='#1F2937'))
     
-    if project_filter == "All" or project_filter == "Safa Two":
-        st.subheader("Damac Safa Two")
-        st.markdown("""
-        Damac Safa Two is a luxury residential development by Damac Properties located in Business Bay, Dubai.
-        
-        ### Key Information:
-        - **Developer**: Damac Properties
-        - **Location**: Business Bay, Dubai
-        - **Expected Completion**: Q2 2027
-        - **Unit Types**: Studios, 1, 2, and 3 Bedroom Apartments
-        - **Payment Plan**: 20/55/25 or other flexible plans available
-        
-        ### Key Features:
-        - Luxury branded residences with De Grisogono interiors
-        - Premium views of Dubai Canal, Downtown, and sea views
-        - High-end amenities including infinity pools, spa, fitness center
-        - Strategic location close to Downtown Dubai and major attractions
-        """)
+    st.plotly_chart(fig, use_container_width=True)
     
-    if project_filter == "All":
-        st.header("Comparison: Safa One vs. Safa Two")
+    # Investment comparison
+    st.markdown('<h3 style="color: #1E3A8A; margin-top: 20px;">Investment Comparison</h3>', unsafe_allow_html=True)
+    
+    # Create comparison table
+    investment_data = {
+        'Metric': [
+            'Expected Delivery', 
+            'Construction Progress', 
+            'Payment Plan',
+            'Avg. 1BR Price',
+            'Avg. 2BR Price',
+            'Avg. 3BR Price',
+            'Price per Sq.Ft Range',
+            'Location'
+        ],
+        'Safa One': [
+            PROJECT_INFO['Safa One']['delivery_date'],
+            PROJECT_INFO['Safa One']['construction_progress'],
+            PROJECT_INFO['Safa One']['payment_plan'],
+            format_currency(safa_one_analysis['bedroom_stats'].loc[safa_one_analysis['bedroom_stats']['bedrooms'] == '1', 'avg_price'].values[0]),
+            format_currency(safa_one_analysis['bedroom_stats'].loc[safa_one_analysis['bedroom_stats']['bedrooms'] == '2', 'avg_price'].values[0]),
+            format_currency(safa_one_analysis['bedroom_stats'].loc[safa_one_analysis['bedroom_stats']['bedrooms'] == '3', 'avg_price'].values[0]),
+            f"AED {safa_one_stats['min_price_per_sqft']:,.0f} - {safa_one_stats['max_price_per_sqft']:,.0f}",
+            PROJECT_INFO['Safa One']['location']
+        ],
+        'Safa Two': [
+            PROJECT_INFO['Safa Two']['delivery_date'],
+            PROJECT_INFO['Safa Two']['construction_progress'],
+            PROJECT_INFO['Safa Two']['payment_plan'],
+            format_currency(safa_two_analysis['bedroom_stats'].loc[safa_two_analysis['bedroom_stats']['bedrooms'] == '1', 'avg_price'].values[0]),
+            format_currency(safa_two_analysis['bedroom_stats'].loc[safa_two_analysis['bedroom_stats']['bedrooms'] == '2', 'avg_price'].values[0]),
+            format_currency(safa_two_analysis['bedroom_stats'].loc[safa_two_analysis['bedroom_stats']['bedrooms'] == '3', 'avg_price'].values[0]),
+            f"AED {safa_two_stats['min_price_per_sqft']:,.0f} - {safa_two_stats['max_price_per_sqft']:,.0f}",
+            PROJECT_INFO['Safa Two']['location']
+        ]
+    }
+    
+    investment_df = pd.DataFrame(investment_data)
+    
+    st.markdown('<div class="compare-table">', unsafe_allow_html=True)
+    st.table(investment_df.set_index('Metric'))
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# Main function to run the Streamlit app
+def main():
+    # Header
+    st.markdown('<div class="main-header">Damac Safa Properties Analysis</div>', unsafe_allow_html=True)
+    
+    # Introduction
+    st.markdown("""
+    <div class="info-box">
+        This dashboard provides a comprehensive analysis of Damac's premium Safa One and Safa Two projects in Dubai. 
+        Explore property listings, pricing trends, and investment comparisons to make informed decisions.
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Create tabs for navigation
+    tab_overview, tab_safa_one, tab_safa_two, tab_comparison = st.tabs([
+        "Overview", "Safa One Analysis", "Safa Two Analysis", "Project Comparison"
+    ])
+    
+    # Analyze data
+    safa_one_analysis = analyze_data(SAFA_ONE_DATA)
+    safa_two_analysis = analyze_data(SAFA_TWO_DATA)
+    
+    # Overview tab
+    with tab_overview:
+        st.markdown('<div class="project-title">Damac Safa Projects Overview</div>', unsafe_allow_html=True)
+        
+        # Project cards
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("""
+            <div class="project-card">
+                <h2 style="color: #1E3A8A; margin-bottom: 15px;">Safa One</h2>
+                <img src="https://via.placeholder.com/600x400?text=Safa+One" class="project-image">
+                <p><span class="highlight">Location:</span> Al Safa 1, Dubai</p>
+                <p><span class="highlight">Delivery:</span> Q2 2026</p>
+                <p><span class="highlight">Price Range:</span> AED 1.6M - AED 30M</p>
+                <p>Ultra-luxury development featuring one of the world's highest hanging gardens, located along Sheikh Zayed Road with stunning views of Dubai's iconic landmarks.</p>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col2:
+            st.markdown("""
+            <div class="project-card">
+                <h2 style="color: #1E3A8A; margin-bottom: 15px;">Safa Two</h2>
+                <img src="https://via.placeholder.com/600x400?text=Safa+Two" class="project-image">
+                <p><span class="highlight">Location:</span> Business Bay, Dubai</p>
+                <p><span class="highlight">Delivery:</span> Q2 2027</p>
+                <p><span class="highlight">Price Range:</span> AED 949K - AED 5M</p>
+                <p>Luxury residential development in Business Bay featuring de GRISOGONO interiors, offering premium units with views of Dubai Canal and the city skyline.</p>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        # Key statistics comparison
+        st.markdown('<div class="sub-header">Quick Comparison</div>', unsafe_allow_html=True)
+        
+        safa_one_stats = safa_one_analysis['stats_overall']
+        safa_two_stats = safa_two_analysis['stats_overall']
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.markdown("""
+            <div class="metric-card">
+                <h3 style="color: #1E3A8A; text-align: center; margin-bottom: 15px;">Average Price</h3>
+                <div style="display: flex; justify-content: space-between;">
+                    <div>
+                        <p style="font-weight: 600; color: #1E3A8A;">Safa One</p>
+                        <p style="font-size: 20px;">{}</p>
+                    </div>
+                    <div>
+                        <p style="font-weight: 600; color: #3B82F6;">Safa Two</p>
+                        <p style="font-size: 20px;">{}</p>
+                    </div>
+                </div>
+            </div>
+            """.format(
+                format_currency(safa_one_stats['avg_price']),
+                format_currency(safa_two_stats['avg_price'])
+            ), unsafe_allow_html=True)
+        
+        with col2:
+            st.markdown("""
+            <div class="metric-card">
+                <h3 style="color: #1E3A8A; text-align: center; margin-bottom: 15px;">Average Area</h3>
+                <div style="display: flex; justify-content: space-between;">
+                    <div>
+                        <p style="font-weight: 600; color: #1E3A8A;">Safa One</p>
+                        <p style="font-size: 20px;">{}</p>
+                    </div>
+                    <div>
+                        <p style="font-weight: 600; color: #3B82F6;">Safa Two</p>
+                        <p style="font-size: 20px;">{}</p>
+                    </div>
+                </div>
+            </div>
+            """.format(
+                format_area(safa_one_stats['avg_area']),
+                format_area(safa_two_stats['avg_area'])
+            ), unsafe_allow_html=True)
+        
+        with col3:
+            st.markdown("""
+            <div class="metric-card">
+                <h3 style="color: #1E3A8A; text-align: center; margin-bottom: 15px;">Avg Price/sq.ft</h3>
+                <div style="display: flex; justify-content: space-between;">
+                    <div>
+                        <p style="font-weight: 600; color: #1E3A8A;">Safa One</p>
+                        <p style="font-size: 20px;">AED {:,.0f}</p>
+                    </div>
+                    <div>
+                        <p style="font-weight: 600; color: #3B82F6;">Safa Two</p>
+                        <p style="font-size: 20px;">AED {:,.0f}</p>
+                    </div>
+                </div>
+            </div>
+            """.format(
+                safa_one_stats['avg_price_per_sqft'],
+                safa_two_stats['avg_price_per_sqft']
+            ), unsafe_allow_html=True)
+    
+    # Safa One tab
+    with tab_safa_one:
+        st.markdown('<div class="project-title">Safa One Analysis</div>', unsafe_allow_html=True)
+        
+        # Display project information
+        display_project_info("Safa One", PROJECT_INFO["Safa One"])
+        
+        # Display analysis
+        display_project_analysis("Safa One", SAFA_ONE_DATA)
+    
+    # Safa Two tab
+    with tab_safa_two:
+        st.markdown('<div class="project-title">Safa Two Analysis</div>', unsafe_allow_html=True)
+        
+        # Display project information
+        display_project_info("Safa Two", PROJECT_INFO["Safa Two"])
+        
+        # Display analysis
+        display_project_analysis("Safa Two", SAFA_TWO_DATA)
+    
+    # Comparison tab
+    with tab_comparison:
+        st.markdown('<div class="project-title">Safa One vs Safa Two</div>', unsafe_allow_html=True)
+        
+        # Display comparison
+        display_comparison(safa_one_analysis, safa_two_analysis)
+        
+        # Investment insights
         st.markdown("""
-        ### Location
-        - **Safa One**: Located in Al Safa, closer to the beach and Sheikh Zayed Road
-        - **Safa Two**: Located in Business Bay, closer to Downtown Dubai and Dubai Canal
-        
-        ### Price Points
-        - **Safa One**: Generally commands higher prices, especially for larger units
-        - **Safa Two**: Offers more affordable entry points, particularly for studios and 1-bedrooms
-        
-        ### Unit Sizes
-        - **Safa One**: Tends to have larger units on average
-        - **Safa Two**: Offers more compact layouts, especially for studios and 1-bedrooms
-        
-        ### Investment Perspective
-        - **Safa One**: Earlier handover (2026), potentially higher capital appreciation
-        - **Safa Two**: Later handover (2027), more attractive payment plans
-        
-        ### Key Differentiators
-        - **Safa One**: Italian luxury design, views of Burj Al Arab and sea
-        - **Safa Two**: De Grisogono interiors, Downtown and Canal views
-        """)
+        <div class="info-box">
+            <h3 style="color: #1E3A8A; margin-bottom: 15px;">Investment Insights</h3>
+            <p>When comparing Safa One and Safa Two as investment opportunities, consider these key factors:</p>
+            <ul>
+                <li><strong>Delivery Timeline:</strong> Safa One is expected to be delivered in Q2 2026, approximately one year earlier than Safa Two (Q2 2027).</li>
+                <li><strong>Location Value:</strong> Safa One in Al Safa 1 offers proximity to Sheikh Zayed Road and Dubai's established luxury areas, while Safa Two in Business Bay provides central location with Dubai Canal views.</li>
+                <li><strong>Price Points:</strong> Safa Two offers more affordable entry points with studios starting from AED 949K, while Safa One commands premium pricing but may offer stronger appreciation potential.</li>
+                <li><strong>Unit Sizes:</strong> On average, Safa One units are more spacious, particularly in the 2-3 bedroom categories, potentially appealing to end-users and long-term residents.</li>
+                <li><strong>Luxury Appeal:</strong> Both developments feature de GRISOGONO interiors, but Safa One's hanging gardens concept provides a unique selling proposition in the luxury segment.</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # Footer
+    st.markdown("""
+    <div class="footer">
+        <p>Damac Safa Properties Analysis Dashboard • Data last updated: March 2025</p>
+        <p>This analysis is based on current property listings and is for informational purposes only.</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Save to CSV
+    safa_one_path = os.path.join(RESULTS_DIR, "safa_one_properties.csv")
+    safa_two_path = os.path.join(RESULTS_DIR, "safa_two_properties.csv")
+    
+    safa_one_analysis['dataframe'].to_csv(safa_one_path, index=False)
+    safa_two_analysis['dataframe'].to_csv(safa_two_path, index=False)
+    
+    # Download links for CSVs
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.download_button(
+            label="Download Safa One Data",
+            data=open(safa_one_path, 'rb').read(),
+            file_name="safa_one_properties.csv",
+            mime="text/csv"
+        )
+    
+    with col2:
+        st.download_button(
+            label="Download Safa Two Data",
+            data=open(safa_two_path, 'rb').read(),
+            file_name="safa_two_properties.csv",
+            mime="text/csv"
+        )
 
 # Run the Streamlit app
 if __name__ == "__main__":
