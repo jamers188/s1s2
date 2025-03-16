@@ -9,92 +9,143 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-# Set page configuration
+# Enhanced CSS styling
 st.set_page_config(
     page_title="Damac Safa Properties Analysis",
     page_icon="🏢",
     layout="wide"
 )
 
-# Custom CSS styling
+# Comprehensive CSS for professional look
 st.markdown("""
 <style>
+    /* Global Styling */
+    body {
+        font-family: 'Inter', 'Segoe UI', Roboto, sans-serif;
+        background-color: #F9FAFB;
+        color: #1F2937;
+    }
+
+    /* Header Styling */
     .main-header {
-        font-size: 36px !important;
-        font-weight: 700;
-        color: #1E3A8A;
-        margin-bottom: 20px;
+        font-size: 42px !important;
+        font-weight: 800;
+        color: #1E40AF;
+        margin-bottom: 25px;
         text-align: center;
+        letter-spacing: -1px;
     }
-    .sub-header {
-        font-size: 24px;
+
+    /* Tabs Styling */
+    .stTabs [data-baseweb="tab-list"] {
+        background-color: #EFF6FF;
+        border-radius: 12px;
+        padding: 8px;
+    }
+
+    .stTabs [data-baseweb="tab"] {
+        height: 45px;
         font-weight: 600;
-        color: #1E3A8A;
-        margin-top: 30px;
-        margin-bottom: 10px;
+        color: #1E40AF;
+        transition: all 0.3s ease;
+        border-radius: 8px;
     }
-    .project-title {
-        font-size: 28px;
-        font-weight: 600;
-        color: #1E3A8A;
-        margin-top: 20px;
-        margin-bottom: 10px;
-        text-align: center;
+
+    .stTabs [data-baseweb="tab"]:hover {
+        background-color: #E0F2FE;
+        color: #1D4ED8;
     }
-    .metric-card {
-        background-color: #f8f9fa;
-        border-radius: 10px;
-        padding: 15px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+
+    .stTabs [data-baseweb="tab"][aria-selected="true"] {
+        background-color: #1E40AF;
+        color: white !important;
     }
-    .metric-value {
-        font-size: 24px;
-        font-weight: 700;
-        color: #1E3A8A;
-    }
-    .metric-label {
-        font-size: 14px;
-        color: #4B5563;
-    }
+
+    /* Info Box Styling */
     .info-box {
         background-color: #EFF6FF;
-        border-left: 5px solid #1E3A8A;
-        padding: 15px;
-        border-radius: 5px;
-        margin-bottom: 20px;
-    }
-    .data-table {
+        border-left: 6px solid #1E40AF;
+        padding: 20px;
         border-radius: 10px;
-        overflow: hidden;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        margin-bottom: 25px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
     }
+
+    /* Project Card Styling */
     .project-card {
         background-color: white;
-        border-radius: 10px;
-        padding: 20px;
+        border-radius: 12px;
+        padding: 25px;
         margin-bottom: 20px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 10px 15px rgba(0, 0, 0, 0.08);
+        border: 1px solid #E5E7EB;
+        transition: all 0.3s ease;
     }
-    .project-image {
-        border-radius: 10px;
-        max-width: 100%;
-        margin-bottom: 15px;
+
+    .project-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 20px rgba(0, 0, 0, 0.1);
     }
-    .compare-table th {
-        background-color: #EFF6FF;
+
+    /* Metric Card Styling */
+    .metric-card {
+        background-color: white;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.06);
+        border: 1px solid #E5E7EB;
+        text-align: center;
+        transition: all 0.3s ease;
     }
+
+    .metric-card:hover {
+        transform: scale(1.02);
+        box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .metric-value {
+        font-size: 28px;
+        font-weight: 700;
+        color: #1E40AF;
+        margin-bottom: 10px;
+    }
+
+    .metric-label {
+        font-size: 14px;
+        color: #6B7280;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    /* Footer Styling */
     .footer {
         margin-top: 50px;
+        padding: 20px;
+        background-color: #F3F4F6;
         text-align: center;
         color: #6B7280;
         font-size: 12px;
+        border-top: 1px solid #E5E7EB;
     }
+
+    /* DataTable Styling */
+    .stDataFrame {
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.05);
+    }
+
+    /* Highlight Styling */
     .highlight {
-        font-weight: 600;
-        color: #1E3A8A;
+        font-weight: 700;
+        color: #1E40AF;
     }
-    .tab-content {
-        padding: 20px 0;
+
+    /* Responsive Adjustments */
+    @media (max-width: 768px) {
+        .main-header {
+            font-size: 32px !important;
+        }
     }
 </style>
 """, unsafe_allow_html=True)
