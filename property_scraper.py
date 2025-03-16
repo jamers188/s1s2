@@ -1,19 +1,17 @@
 import streamlit as st
-import requests
-from bs4 import BeautifulSoup
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import os
+import json
 import time
-import random
-import re
 from datetime import datetime
-from urllib.parse import quote
+import openai
+import re
 
 # Page configuration
 st.set_page_config(
-    page_title="Property Finder Data Exporter",
+    page_title="Property Analyzer with AI",
     page_icon="🏢",
     layout="wide"
 )
@@ -23,366 +21,102 @@ RESULTS_DIR = "results"
 if not os.path.exists(RESULTS_DIR):
     os.makedirs(RESULTS_DIR)
 
-class PropertyFinderScraper:
-    def __init__(self):
-        self.headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.82 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.5',
-            'Accept-Encoding': 'gzip, deflate, br',
-            'Connection': 'keep-alive',
-            'Upgrade-Insecure-Requests': '1',
-            'Cache-Control': 'max-age=0',
-            'TE': 'Trailers',
-            'Pragma': 'no-cache'
-        }
-        self.base_url = "https://www.propertyfinder.ae"
+class OpenAIPropertyAnalyzer:
+    def __init__(self, api_key):
+        self.api_key = api_key
+        openai.api_key = api_key
         self.results_dir = RESULTS_DIR
+        
+    def get_property_data(self, property_name, max_properties=10):
+        """Use OpenAI to extract property data for the specified property"""
+        prompt = f"""
+        I need detailed information about properties in {property_name} in Dubai.
 
-    def search_properties(self, search_term, property_type=None, min_price=None, max_price=None, bedrooms=None, max_pages=3, progress_bar=None):
-        """Search properties on Property Finder"""
-        all_properties = []
-        
-        for page in range(1, max_pages + 1):
-            if progress_bar:
-                progress_bar.progress((page - 1) / max_pages)
-                
-            # Build the search URL
-            search_url = self._build_search_url(search_term, property_type, min_price, max_price, bedrooms, page)
-            
-            # Fetch and parse the page
-            soup = self._fetch_page(search_url)
-            if not soup:
-                continue
-                
-            # Extract total count if first page
-            if page == 1:
-                total_count = self._extract_total_count(soup)
-                if total_count == 0:
-                    st.warning(f"No properties found for '{search_term}'")
-                    break
-            
-            # Extract properties
-            page_properties = self._extract_properties(soup, search_term)
-            
-            if not page_properties:
-                st.warning(f"No properties found on page {page} for '{search_term}'")
-                break
-                
-            all_properties.extend(page_properties)
-            
-            # Delay to avoid rate limiting
-            time.sleep(random.uniform(1, 3))
-        
-        if progress_bar:
-            progress_bar.progress(1.0)
-            
-        return all_properties
-    
-    def _build_search_url(self, search_term, property_type=None, min_price=None, max_price=None, bedrooms=None, page=1):
-        """Build search URL with parameters"""
-        search_query = quote(search_term)
-        url = f"{self.base_url}/en/search?q={search_query}&page={page}"
-        
-        if property_type and property_type != "Any":
-            property_type_code = self._get_property_type_code(property_type)
-            url += f"&c={property_type_code}"
-            
-        if min_price:
-            url += f"&pf={min_price}"
-            
-        if max_price:
-            url += f"&pt={max_price}"
-            
-        if bedrooms and bedrooms != "Any":
-            if bedrooms == "Studio":
-                bed_value = "0"
-            elif bedrooms == "5+":
-                bed_value = "5"
-            else:
-                bed_value = bedrooms
-            url += f"&bf={bed_value}&bt={bed_value}"
-        
-        return url
-    
-    def _get_property_type_code(self, property_type):
-        """Convert property type to Property Finder category code"""
-        codes = {
-            "Apartment": "1",
-            "Villa": "2",
-            "Townhouse": "16",
-            "Penthouse": "4",
-            "Duplex": "8"
+        Please provide data for up to {max_properties} available properties with the following details for each:
+        1. Project name (e.g., Damac Safa One, Damac Safa Two)
+        2. Property type (e.g., Apartment, Villa, Penthouse)
+        3. Price in AED (numerical value only)
+        4. Area in square feet (numerical value only)
+        5. Number of bedrooms (Studio, 1, 2, 3, etc.)
+        6. Number of bathrooms (1, 2, 3, etc.)
+        7. Location (e.g., Business Bay, Dubai)
+        8. Developer name
+        9. Brief description of the property
+
+        For each property, format the response as a JSON object as follows:
+        ```json
+        {
+          "project": "Property project name",
+          "property_type": "Property type",
+          "price": 1000000,
+          "area_sqft": 1200,
+          "bedrooms": "2",
+          "bathrooms": "2",
+          "location": "Location",
+          "developer": "Developer name",
+          "description": "Brief description"
         }
-        return codes.get(property_type, "0")
-    
-    def _fetch_page(self, url):
-        """Fetch and parse a page with retry mechanism"""
-        max_retries = 3
-        retry_count = 0
+        ```
+
+        I need the response to be ONLY valid JSON objects in an array, nothing else. Use the most up-to-date information available.
+        """
         
-        while retry_count < max_retries:
-            try:
-                # Add random delays between retries
-                if retry_count > 0:
-                    time.sleep(random.uniform(2, 5))
-                
-                response = requests.get(
-                    url, 
-                    headers=self.headers,
-                    timeout=30
-                )
-                
-                if response.status_code == 200:
-                    return BeautifulSoup(response.text, 'html.parser')
-                elif response.status_code == 403:
-                    st.error("Access denied by Property Finder. Try again later.")
-                    return None
-                else:
-                    st.warning(f"Received status code {response.status_code} when fetching {url}")
-                    retry_count += 1
-            except Exception as e:
-                st.error(f"Error fetching {url}: {e}")
-                retry_count += 1
-        
-        return None
-    
-    def _extract_total_count(self, soup):
-        """Extract total number of properties found"""
         try:
-            count_element = soup.select_one('.search-results__header') or soup.select_one('.search-title')
-            if count_element:
-                text = count_element.text.strip()
-                count_match = re.search(r'(\d+)', text)
-                if count_match:
-                    return int(count_match.group(1))
-            return 0
-        except Exception as e:
-            st.error(f"Error extracting property count: {e}")
-            return 0
-    
-    def _extract_properties(self, soup, search_term):
-        """Extract property details from search results page"""
-        properties = []
-        
-        # Try multiple selectors to find property cards
-        property_cards = soup.select('.property-card') or soup.select('.card-list__item') or soup.select('.search-results__list .card')
-        
-        if not property_cards:
-            # Try to find any embedded property JSON data
-            json_data = self._extract_json_data(soup)
-            if json_data:
-                return json_data
+            # Make API call to OpenAI
+            response = openai.ChatCompletion.create(
+                model="gpt-4",  # or gpt-3.5-turbo if preferred
+                messages=[
+                    {"role": "system", "content": "You are a helpful assistant that provides accurate real estate data in Dubai. You output only valid JSON without any additional text."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.1,  # Low temperature for more focused, deterministic output
+                max_tokens=2000
+            )
             
-            # If no cards or JSON found, try to see if there's a different layout
-            alternate_cards = soup.select('[data-testid="property-card"]') or soup.select('.search-results-list-item')
-            if alternate_cards:
-                property_cards = alternate_cards
+            # Extract content from the response
+            content = response.choices[0].message.content.strip()
+            
+            # Extract JSON from the content (in case there's any extra text)
+            json_match = re.search(r'```json(.*?)```', content, re.DOTALL)
+            if json_match:
+                json_str = json_match.group(1).strip()
             else:
-                st.error("Could not find property listings on the page. The website structure may have changed.")
-                st.write("Please try a different search term or check the Property Finder website directly.")
-                return []
-        
-        for card in property_cards:
+                json_str = content
+            
+            # Clean up JSON string
+            json_str = json_str.replace('```json', '').replace('```', '').strip()
+            
+            # Parse JSON data
             try:
-                property_data = {}
-                
-                # Extract title
-                title_element = (
-                    card.select_one('.property-card__title') or 
-                    card.select_one('.card-list__item-property-title') or
-                    card.select_one('h2') or
-                    card.select_one('[data-testid="property-card-title"]')
-                )
-                property_data['title'] = title_element.text.strip() if title_element else "N/A"
-                
-                # Extract project name from title or separate element
-                property_data['project'] = self._extract_project_name(property_data['title'], search_term)
-                
-                # Extract price
-                price_element = (
-                    card.select_one('.property-card__price') or 
-                    card.select_one('.card-list__item-property-price') or
-                    card.select_one('[data-testid="property-card-price"]')
-                )
-                price_text = price_element.text.strip() if price_element else "N/A"
-                property_data['price_display'] = price_text
-                property_data['price'] = self._extract_number(price_text)
-                
-                # Extract location
-                location_element = (
-                    card.select_one('.property-card__location') or 
-                    card.select_one('.card-list__item-property-location') or
-                    card.select_one('[data-testid="property-card-location"]')
-                )
-                property_data['location'] = location_element.text.strip() if location_element else "N/A"
-                
-                # Extract details (beds, baths, size)
-                property_data.update(self._extract_property_details(card))
-                
-                # Extract agent name
-                agent_element = (
-                    card.select_one('.property-card__agent') or 
-                    card.select_one('.card-list__item-agent-name') or
-                    card.select_one('[data-testid="property-card-agent"]')
-                )
-                property_data['agent_name'] = agent_element.text.strip() if agent_element else "N/A"
-                
-                # Extract URL
-                link_element = card.select_one('a')
-                if link_element and 'href' in link_element.attrs:
-                    href = link_element['href']
-                    property_data['url'] = self.base_url + href if not href.startswith('http') else href
-                else:
-                    property_data['url'] = "N/A"
-                
-                # Calculate price per sqft if possible
-                if property_data['price'] > 0 and property_data['area_sqft'] > 0:
-                    property_data['price_per_sqft'] = round(property_data['price'] / property_data['area_sqft'], 2)
-                else:
-                    property_data['price_per_sqft'] = 0
-                
-                properties.append(property_data)
-            except Exception as e:
-                st.error(f"Error extracting property details: {e}")
-                continue
-        
-        return properties
-    
-    def _extract_property_details(self, card):
-        """Extract bedrooms, bathrooms and area details"""
-        details = {
-            'bedrooms': 'N/A',
-            'bathrooms': 'N/A',
-            'area': 'N/A',
-            'area_sqft': 0
-        }
-        
-        # Try different selectors for property details
-        details_container = (
-            card.select_one('.property-card__facts') or 
-            card.select_one('.card-list__item-property-features') or
-            card.select_one('[data-testid="property-card-details"]')
-        )
-        
-        if details_container:
-            # Try to find list items or spans containing details
-            detail_items = details_container.select('li') or details_container.select('span')
-            
-            for i, item in enumerate(detail_items):
-                text = item.text.strip()
-                
-                if i == 0 or 'bed' in text.lower():
-                    details['bedrooms'] = 'Studio' if 'studio' in text.lower() else text
-                elif i == 1 or 'bath' in text.lower():
-                    details['bathrooms'] = text
-                elif i == 2 or 'sq' in text.lower():
-                    details['area'] = text
-                    details['area_sqft'] = self._extract_area(text)
-        
-        return details
-    
-    def _extract_json_data(self, soup):
-        """Try to extract property data from embedded JSON"""
-        try:
-            script_tags = soup.find_all('script', {'type': 'application/ld+json'})
-            properties = []
-            
-            for script in script_tags:
+                property_data = json.loads(json_str)
+                if not isinstance(property_data, list):
+                    property_data = [property_data]
+            except json.JSONDecodeError:
+                # If the JSON is not an array, try wrapping it
                 try:
-                    import json
-                    data = json.loads(script.string)
-                    
-                    # Check if this is property listing data
-                    if '@type' in data and data['@type'] in ['Property', 'PropertyListing', 'Product']:
-                        property_data = {
-                            'title': data.get('name', 'N/A'),
-                            'project': self._extract_project_name(data.get('name', ''), ''),
-                            'price_display': f"{data.get('price', 'N/A')} {data.get('priceCurrency', 'AED')}",
-                            'price': float(data.get('price', 0)),
-                            'location': data.get('address', {}).get('addressLocality', 'N/A'),
-                            'bedrooms': str(data.get('numberOfRooms', 'N/A')),
-                            'bathrooms': str(data.get('numberOfBathrooms', 'N/A')),
-                            'area': f"{data.get('floorSize', {}).get('value', 'N/A')} {data.get('floorSize', {}).get('unitCode', 'sq.ft')}",
-                            'area_sqft': float(data.get('floorSize', {}).get('value', 0)),
-                            'agent_name': data.get('seller', {}).get('name', 'N/A'),
-                            'url': data.get('url', 'N/A')
-                        }
-                        
-                        # Calculate price per sqft
-                        if property_data['price'] > 0 and property_data['area_sqft'] > 0:
-                            property_data['price_per_sqft'] = round(property_data['price'] / property_data['area_sqft'], 2)
-                        else:
-                            property_data['price_per_sqft'] = 0
-                            
-                        properties.append(property_data)
-                except:
-                    continue
+                    json_str = f"[{json_str}]"
+                    property_data = json.loads(json_str)
+                except json.JSONDecodeError:
+                    st.error(f"Failed to parse property data from OpenAI response: {content}")
+                    return []
             
-            return properties
+            return property_data
+        
         except Exception as e:
-            st.error(f"Error extracting JSON data: {e}")
+            st.error(f"Error getting property data from OpenAI: {str(e)}")
             return []
     
-    def _extract_project_name(self, title, search_term):
-        """Extract project name from title"""
-        # First try to find exact matches for common project names
-        common_projects = ["Damac Safa One", "Damac Safa Two", "Safa One", "Safa Two"]
-        for project in common_projects:
-            if project.lower() in title.lower():
-                return project
-        
-        # If search term contains project name, use that
-        if search_term and any(term in title.lower() for term in search_term.lower().split()):
-            return search_term
-            
-        # Fallback to generic extraction
-        title_parts = title.split(',')
-        if len(title_parts) > 1:
-            return title_parts[0].strip()
-        else:
-            return "Unknown Project"
-    
-    def _extract_number(self, text):
-        """Extract numeric value from text"""
-        try:
-            # Remove commas and find all digits
-            numbers = re.findall(r'[\d,]+', text.replace(',', ''))
-            if numbers:
-                return float(numbers[0])
-            return 0
-        except:
-            return 0
-    
-    def _extract_area(self, text):
-        """Extract area in sq.ft from text"""
-        try:
-            # Find numeric value
-            area_match = re.search(r'([\d,\.]+)', text.replace(',', ''))
-            if not area_match:
-                return 0
-                
-            area_value = float(area_match.group(1))
-            
-            # Check unit and convert if necessary
-            if 'm²' in text.lower() or 'sqm' in text.lower():
-                # Convert from sq.m to sq.ft
-                area_value *= 10.764
-                
-            return area_value
-        except:
-            return 0
-    
-    def save_to_csv(self, properties, search_term):
-        """Save property data to CSV file"""
+    def save_to_csv(self, properties, property_name):
+        """Save property data to CSV"""
         if not properties:
             return None
-            
-        # Create DataFrame
+        
+        # Convert to DataFrame
         df = pd.DataFrame(properties)
         
-        # Format filename
-        filename = f"{search_term.replace(' ', '_').lower()}_properties_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+        # Add timestamp
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename = f"{property_name.replace(' ', '_').lower()}_properties_{timestamp}.csv"
         filepath = os.path.join(self.results_dir, filename)
         
         # Save to CSV
@@ -394,8 +128,16 @@ class PropertyFinderScraper:
         """Analyze property data"""
         if not properties:
             return None
-            
+        
+        # Convert to DataFrame
         df = pd.DataFrame(properties)
+        
+        # Ensure numeric types
+        df['price'] = pd.to_numeric(df['price'], errors='coerce')
+        df['area_sqft'] = pd.to_numeric(df['area_sqft'], errors='coerce')
+        
+        # Calculate price per sqft
+        df['price_per_sqft'] = df['price'] / df['area_sqft']
         
         # Basic statistics
         stats = {
@@ -403,60 +145,40 @@ class PropertyFinderScraper:
             'avg_price': df['price'].mean() if 'price' in df.columns else 0,
             'min_price': df['price'].min() if 'price' in df.columns else 0,
             'max_price': df['price'].max() if 'price' in df.columns else 0,
-            'median_price': df['price'].median() if 'price' in df.columns else 0
+            'median_price': df['price'].median() if 'price' in df.columns else 0,
+            'avg_price_per_sqft': df['price_per_sqft'].mean() if 'price_per_sqft' in df.columns else 0
         }
         
-        # Calculate price per sqft stats if available
-        if 'price_per_sqft' in df.columns:
-            stats['avg_price_per_sqft'] = df[df['price_per_sqft'] > 0]['price_per_sqft'].mean()
-            stats['min_price_per_sqft'] = df[df['price_per_sqft'] > 0]['price_per_sqft'].min()
-            stats['max_price_per_sqft'] = df[df['price_per_sqft'] > 0]['price_per_sqft'].max()
+        # Counts by property type
+        property_type_counts = df['property_type'].value_counts().to_dict() if 'property_type' in df.columns else {}
         
-        # Property type breakdown
-        if 'property_type' in df.columns:
-            property_types = df['property_type'].value_counts().to_dict()
-        else:
-            property_types = {}
-            
-        # Bedroom breakdown
-        if 'bedrooms' in df.columns:
-            bedroom_counts = df['bedrooms'].value_counts().to_dict()
-        else:
-            bedroom_counts = {}
-            
-        # Agent breakdown
-        if 'agent_name' in df.columns:
-            agent_counts = df['agent_name'].value_counts().to_dict()
-            top_agents = {k: agent_counts[k] for k in list(agent_counts.keys())[:5]} if agent_counts else {}
-        else:
-            agent_counts = {}
-            top_agents = {}
-            
-        # Project breakdown
-        if 'project' in df.columns:
-            project_counts = df['project'].value_counts().to_dict()
-        else:
-            project_counts = {}
+        # Counts by bedroom
+        bedroom_counts = df['bedrooms'].value_counts().to_dict() if 'bedrooms' in df.columns else {}
+        
+        # Counts by project
+        project_counts = df['project'].value_counts().to_dict() if 'project' in df.columns else {}
+        
+        # Counts by developer
+        developer_counts = df['developer'].value_counts().to_dict() if 'developer' in df.columns else {}
         
         return {
             'dataframe': df,
             'stats': stats,
-            'property_types': property_types,
+            'property_type_counts': property_type_counts,
             'bedroom_counts': bedroom_counts,
-            'agent_counts': agent_counts,
-            'top_agents': top_agents,
-            'project_counts': project_counts
+            'project_counts': project_counts,
+            'developer_counts': developer_counts
         }
     
-    def generate_visualizations(self, analysis, search_term):
-        """Generate data visualizations"""
+    def generate_visualizations(self, analysis, property_name):
+        """Generate visualizations for the analysis"""
         if not analysis or 'dataframe' not in analysis or analysis['dataframe'].empty:
             return {}
             
         df = analysis['dataframe']
         figures = {}
         
-        # Set style
+        # Set the style
         sns.set(style="whitegrid")
         
         # Price distribution
@@ -464,28 +186,56 @@ class PropertyFinderScraper:
             if 'price' in df.columns and df['price'].sum() > 0:
                 fig_price, ax_price = plt.subplots(figsize=(10, 5))
                 sns.histplot(df['price'], kde=True, ax=ax_price)
-                ax_price.set_title(f'Price Distribution for {search_term}')
+                ax_price.set_title(f'Price Distribution for {property_name}')
                 ax_price.set_xlabel('Price (AED)')
                 ax_price.set_ylabel('Count')
                 plt.tight_layout()
-                figures['price'] = fig_price
+                figures['price_distribution'] = fig_price
         except Exception as e:
-            st.error(f"Error generating price chart: {e}")
+            st.error(f"Error generating price distribution chart: {e}")
         
-        # Price per sqft distribution
+        # Price per square foot distribution
         try:
             if 'price_per_sqft' in df.columns and df['price_per_sqft'].sum() > 0:
-                df_filtered = df[df['price_per_sqft'] > 0]  # Filter out zeros
-                if len(df_filtered) > 0:
-                    fig_sqft, ax_sqft = plt.subplots(figsize=(10, 5))
-                    sns.histplot(df_filtered['price_per_sqft'], kde=True, ax=ax_sqft)
-                    ax_sqft.set_title(f'Price per Sq.Ft Distribution for {search_term}')
-                    ax_sqft.set_xlabel('Price per Sq.Ft (AED)')
-                    ax_sqft.set_ylabel('Count')
-                    plt.tight_layout()
-                    figures['price_per_sqft'] = fig_sqft
+                fig_ppsf, ax_ppsf = plt.subplots(figsize=(10, 5))
+                sns.histplot(df['price_per_sqft'], kde=True, ax=ax_ppsf)
+                ax_ppsf.set_title(f'Price per Sq.Ft for {property_name}')
+                ax_ppsf.set_xlabel('Price per Sq.Ft (AED)')
+                ax_ppsf.set_ylabel('Count')
+                plt.tight_layout()
+                figures['price_per_sqft'] = fig_ppsf
         except Exception as e:
             st.error(f"Error generating price per sqft chart: {e}")
+        
+        # Property type breakdown
+        try:
+            if 'property_type' in df.columns and len(df['property_type'].unique()) > 1:
+                fig_type, ax_type = plt.subplots(figsize=(10, 5))
+                property_type_counts = df['property_type'].value_counts()
+                property_type_counts.plot(kind='bar', ax=ax_type)
+                ax_type.set_title(f'Property Types for {property_name}')
+                ax_type.set_xlabel('Property Type')
+                ax_type.set_ylabel('Count')
+                plt.xticks(rotation=45)
+                plt.tight_layout()
+                figures['property_types'] = fig_type
+        except Exception as e:
+            st.error(f"Error generating property type chart: {e}")
+        
+        # Bedroom distribution
+        try:
+            if 'bedrooms' in df.columns and len(df['bedrooms'].unique()) > 1:
+                fig_bed, ax_bed = plt.subplots(figsize=(10, 5))
+                bedroom_counts = df['bedrooms'].value_counts()
+                bedroom_counts.plot(kind='bar', ax=ax_bed)
+                ax_bed.set_title(f'Bedroom Distribution for {property_name}')
+                ax_bed.set_xlabel('Bedrooms')
+                ax_bed.set_ylabel('Count')
+                plt.xticks(rotation=45)
+                plt.tight_layout()
+                figures['bedrooms'] = fig_bed
+        except Exception as e:
+            st.error(f"Error generating bedroom chart: {e}")
         
         # Project breakdown
         try:
@@ -493,7 +243,7 @@ class PropertyFinderScraper:
                 fig_project, ax_project = plt.subplots(figsize=(10, 5))
                 project_counts = df['project'].value_counts()
                 project_counts.plot(kind='bar', ax=ax_project)
-                ax_project.set_title(f'Projects for {search_term}')
+                ax_project.set_title(f'Projects in {property_name}')
                 ax_project.set_xlabel('Project')
                 ax_project.set_ylabel('Count')
                 plt.xticks(rotation=45)
@@ -502,186 +252,271 @@ class PropertyFinderScraper:
         except Exception as e:
             st.error(f"Error generating project chart: {e}")
         
-        # Bedroom breakdown
-        try:
-            if 'bedrooms' in df.columns and len(df['bedrooms'].unique()) > 1:
-                fig_bed, ax_bed = plt.subplots(figsize=(10, 5))
-                bedroom_counts = df['bedrooms'].value_counts()
-                bedroom_counts.plot(kind='bar', ax=ax_bed)
-                ax_bed.set_title(f'Bedroom Distribution for {search_term}')
-                ax_bed.set_xlabel('Bedrooms')
-                ax_bed.set_ylabel('Count')
-                plt.xticks(rotation=45)
-                plt.tight_layout()
-                figures['bedrooms'] = fig_bed
-        except Exception as e:
-            st.error(f"Error generating bedroom chart: {e}")
-            
-        # Agent breakdown
-        try:
-            if 'agent_name' in df.columns and len(df['agent_name'].unique()) > 1:
-                fig_agent, ax_agent = plt.subplots(figsize=(10, 5))
-                agent_counts = df['agent_name'].value_counts().head(10)  # Top 10 agents
-                agent_counts.plot(kind='bar', ax=ax_agent)
-                ax_agent.set_title(f'Top Agents for {search_term}')
-                ax_agent.set_xlabel('Agent')
-                ax_agent.set_ylabel('Number of Listings')
-                plt.xticks(rotation=45)
-                plt.tight_layout()
-                figures['agents'] = fig_agent
-        except Exception as e:
-            st.error(f"Error generating agent chart: {e}")
-            
         return figures
-
-# Main Streamlit App
-def main():
-    st.title("Property Finder Data Exporter")
-    st.markdown("### Search and analyze properties from Property Finder")
     
-    with st.expander("About This Tool", expanded=False):
-        st.markdown("""
-        This tool searches Property Finder for properties and exports the data for analysis. Enter a search term such as:
-        - Property name (e.g., "Damac Safa Two")
-        - Location (e.g., "Business Bay")
-        - Developer (e.g., "Emaar")
+    def get_property_comparison(self, property_names):
+        """Generate a comparison between different properties using OpenAI"""
+        if not property_names or len(property_names) < 2:
+            return "Please select at least two properties to compare."
         
-        The tool will search Property Finder and extract available property data, saving it to CSV and generating analytics.
-        """)
-    
-    # Search form
-    with st.form("search_form"):
-        st.subheader("Search Properties")
+        prompt = f"""
+        Compare the following Dubai properties in detail: {', '.join(property_names)}.
         
-        col1, col2 = st.columns(2)
+        For each property, provide a structured comparison of:
+        1. Price ranges and average prices
+        2. Return on investment potential
+        3. Location advantages and disadvantages
+        4. Build quality and amenities
+        5. Developer reputation
+        6. Future growth potential
         
-        with col1:
-            search_term = st.text_input("Search Term (Project, Area, or Developer)", "Damac Safa Two")
-            property_type = st.selectbox("Property Type", ["Any", "Apartment", "Villa", "Townhouse", "Penthouse", "Duplex"])
-            
-        with col2:
-            min_price = st.number_input("Minimum Price (AED)", value=0, step=100000)
-            max_price = st.number_input("Maximum Price (AED)", value=0, step=100000)
-            bedrooms = st.selectbox("Bedrooms", ["Any", "Studio", "1", "2", "3", "4", "5+"])
-            
-        max_pages = st.slider("Maximum Pages to Search", min_value=1, max_value=10, value=3, 
-                             help="Each page contains about 25 properties. Increasing this will find more properties but takes longer.")
+        Format your response in markdown with clear headings and bullet points for easy readability.
+        Provide factual information with specific numbers where available.
+        """
         
-        submit_button = st.form_submit_button("Search Properties")
-    
-    if submit_button:
-        scraper = PropertyFinderScraper()
-        
-        with st.spinner(f"Searching for properties matching '{search_term}'..."):
-            # Initialize progress bar
-            progress_bar = st.progress(0)
-            
-            # Search for properties
-            properties = scraper.search_properties(
-                search_term, 
-                property_type, 
-                min_price if min_price > 0 else None, 
-                max_price if max_price > 0 else None, 
-                bedrooms, 
-                max_pages, 
-                progress_bar
+        try:
+            # Make API call to OpenAI
+            response = openai.ChatCompletion.create(
+                model="gpt-4",  # or gpt-3.5-turbo if preferred
+                messages=[
+                    {"role": "system", "content": "You are a Dubai real estate expert providing detailed property comparisons."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.5,
+                max_tokens=2000
             )
             
-            if properties:
-                st.success(f"Found {len(properties)} properties matching '{search_term}'")
+            # Extract content from the response
+            content = response.choices[0].message.content.strip()
+            return content
+            
+        except Exception as e:
+            st.error(f"Error generating property comparison: {str(e)}")
+            return "Failed to generate comparison. Please try again later."
+    
+    def get_investment_advice(self, property_name, budget=None):
+        """Get investment advice for a specific property using OpenAI"""
+        budget_text = f"with a budget of AED {budget}" if budget else ""
+        
+        prompt = f"""
+        Provide detailed investment advice for {property_name} in Dubai {budget_text}.
+        
+        Include the following in your analysis:
+        1. Current market conditions for this property/area
+        2. Expected ROI (rental yield and capital appreciation)
+        3. Best unit types to invest in (studio, 1BR, 2BR, etc.)
+        4. Payment plans available (if known)
+        5. Risks and considerations
+        6. Alternative investment options in similar price range
+        7. Long-term outlook (3-5 years)
+        
+        Format your response in markdown with clear headings and bullet points for easy readability.
+        Provide factual information with specific numbers where available.
+        """
+        
+        try:
+            # Make API call to OpenAI
+            response = openai.ChatCompletion.create(
+                model="gpt-4",  # or gpt-3.5-turbo if preferred
+                messages=[
+                    {"role": "system", "content": "You are a Dubai real estate investment advisor providing detailed market analysis and investment advice."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.5,
+                max_tokens=2000
+            )
+            
+            # Extract content from the response
+            content = response.choices[0].message.content.strip()
+            return content
+            
+        except Exception as e:
+            st.error(f"Error generating investment advice: {str(e)}")
+            return "Failed to generate investment advice. Please try again later."
+
+# Helper functions
+def format_currency(value):
+    """Format a number as currency"""
+    if pd.isna(value):
+        return "N/A"
+    return f"AED {value:,.2f}"
+
+def format_area(value):
+    """Format a number as area"""
+    if pd.isna(value):
+        return "N/A"
+    return f"{value:,.2f} sq.ft"
+
+# Main Streamlit app
+def main():
+    st.title("Property Analyzer with AI")
+    st.markdown("### Analyze real estate properties in Dubai using AI")
+    
+    # Check for OpenAI API key
+    api_key = st.sidebar.text_input("Enter OpenAI API Key", type="password")
+    
+    if not api_key:
+        st.warning("Please enter your OpenAI API key in the sidebar to continue.")
+        st.info("You need an OpenAI API key to use this application. You can get one from [https://platform.openai.com/account/api-keys](https://platform.openai.com/account/api-keys)")
+        return
+    
+    # Initialize analyzer
+    analyzer = OpenAIPropertyAnalyzer(api_key)
+    
+    # Create tabs
+    tab1, tab2, tab3 = st.tabs(["Property Analysis", "Property Comparison", "Investment Advice"])
+    
+    with tab1:
+        st.header("Analyze Property Data")
+        
+        with st.form("property_form"):
+            property_name = st.text_input("Enter Property Name or Area", "Damac Safa Two")
+            max_properties = st.slider("Maximum Properties to Analyze", min_value=5, max_value=20, value=10,
+                                     help="Higher values will provide more comprehensive data but may take longer to process.")
+            
+            analyze_button = st.form_submit_button("Analyze Property")
+        
+        if analyze_button and property_name:
+            with st.spinner(f"Analyzing {property_name}... This may take a minute"):
+                # Get property data from OpenAI
+                properties = analyzer.get_property_data(property_name, max_properties)
                 
-                # Save to CSV
-                csv_filename, csv_filepath = scraper.save_to_csv(properties, search_term)
-                
-                # Analyze data
-                st.subheader("Property Analysis")
-                analysis = scraper.analyze_data(properties)
-                
-                if analysis:
-                    # Display summary statistics
-                    st.write("### Summary Statistics")
+                if properties:
+                    st.success(f"Analysis complete! Found data for {len(properties)} properties in {property_name}")
                     
-                    col1, col2, col3, col4 = st.columns(4)
+                    # Save to CSV
+                    csv_filename, csv_filepath = analyzer.save_to_csv(properties, property_name)
                     
-                    with col1:
-                        st.metric("Total Listings", analysis['stats']['total_listings'])
+                    # Analyze data
+                    analysis = analyzer.analyze_data(properties)
                     
-                    with col2:
-                        st.metric("Average Price", f"AED {analysis['stats']['avg_price']:,.2f}")
-                    
-                    with col3:
-                        st.metric("Price Range", f"AED {analysis['stats']['min_price']:,.2f} - {analysis['stats']['max_price']:,.2f}")
-                    
-                    with col4:
-                        if 'avg_price_per_sqft' in analysis['stats']:
-                            st.metric("Avg Price/Sq.Ft", f"AED {analysis['stats']['avg_price_per_sqft']:,.2f}")
-                        else:
-                            st.metric("Avg Price/Sq.Ft", "N/A")
-                    
-                    # Generate visualizations
-                    visualizations = scraper.generate_visualizations(analysis, search_term)
-                    
-                    if visualizations:
-                        st.write("### Visualizations")
+                    if analysis:
+                        # Display summary statistics
+                        st.subheader("Summary Statistics")
                         
-                        # Use two columns for charts
-                        for i in range(0, len(visualizations), 2):
-                            cols = st.columns(2)
-                            
-                            # First chart
-                            vis_keys = list(visualizations.keys())
-                            if i < len(vis_keys):
-                                with cols[0]:
-                                    key1 = vis_keys[i]
-                                    st.pyplot(visualizations[key1])
-                            
-                            # Second chart
-                            if i + 1 < len(vis_keys):
-                                with cols[1]:
-                                    key2 = vis_keys[i + 1]
-                                    st.pyplot(visualizations[key2])
-                    
-                    # Display project breakdown if available
-                    if analysis['project_counts']:
-                        st.write("### Projects")
-                        project_df = pd.DataFrame({
-                            'Project': list(analysis['project_counts'].keys()),
-                            'Count': list(analysis['project_counts'].values())
-                        }).sort_values('Count', ascending=False)
-                        st.dataframe(project_df)
-                    
-                    # Display property data
-                    st.write("### Property Listings")
-                    st.dataframe(analysis['dataframe'])
-                    
-                    # Provide download link
-                    with open(csv_filepath, "rb") as file:
-                        st.download_button(
-                            label="Download Data as CSV",
-                            data=file,
-                            file_name=csv_filename,
-                            mime="text/csv"
-                        )
+                        col1, col2, col3, col4 = st.columns(4)
                         
-                    # Allow exporting specific projects
-                    if 'project' in analysis['dataframe'].columns and len(analysis['dataframe']['project'].unique()) > 1:
-                        st.write("### Export Specific Project")
-                        project_to_export = st.selectbox("Select Project to Export", 
-                                                       ["All"] + sorted(analysis['dataframe']['project'].unique().tolist()))
+                        with col1:
+                            st.metric("Total Listings", analysis['stats']['total_listings'])
                         
-                        if project_to_export != "All":
-                            project_df = analysis['dataframe'][analysis['dataframe']['project'] == project_to_export]
-                            project_csv = f"{project_to_export.replace(' ', '_').lower()}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+                        with col2:
+                            st.metric("Average Price", format_currency(analysis['stats']['avg_price']))
+                        
+                        with col3:
+                            st.metric("Price Range", f"{format_currency(analysis['stats']['min_price'])} - {format_currency(analysis['stats']['max_price'])}")
+                        
+                        with col4:
+                            st.metric("Avg Price/Sq.Ft", format_currency(analysis['stats']['avg_price_per_sqft']))
+                        
+                        # Generate visualizations
+                        visualizations = analyzer.generate_visualizations(analysis, property_name)
+                        
+                        if visualizations:
+                            st.subheader("Visualizations")
                             
+                            # Display charts in columns
+                            for i in range(0, len(visualizations), 2):
+                                cols = st.columns(2)
+                                
+                                # First chart
+                                chart_keys = list(visualizations.keys())
+                                if i < len(chart_keys):
+                                    with cols[0]:
+                                        key1 = chart_keys[i]
+                                        st.pyplot(visualizations[key1])
+                                
+                                # Second chart (if available)
+                                if i + 1 < len(chart_keys):
+                                    with cols[1]:
+                                        key2 = chart_keys[i + 1]
+                                        st.pyplot(visualizations[key2])
+                        
+                        # Display breakdowns
+                        if analysis['property_type_counts']:
+                            st.subheader("Property Types")
+                            st.write(pd.DataFrame({
+                                'Property Type': list(analysis['property_type_counts'].keys()),
+                                'Count': list(analysis['property_type_counts'].values())
+                            }).sort_values('Count', ascending=False))
+                        
+                        if analysis['bedroom_counts']:
+                            st.subheader("Bedroom Distribution")
+                            st.write(pd.DataFrame({
+                                'Bedrooms': list(analysis['bedroom_counts'].keys()),
+                                'Count': list(analysis['bedroom_counts'].values())
+                            }))
+                        
+                        if analysis['project_counts'] and len(analysis['project_counts']) > 1:
+                            st.subheader("Projects")
+                            st.write(pd.DataFrame({
+                                'Project': list(analysis['project_counts'].keys()),
+                                'Count': list(analysis['project_counts'].values())
+                            }).sort_values('Count', ascending=False))
+                        
+                        if analysis['developer_counts']:
+                            st.subheader("Developers")
+                            st.write(pd.DataFrame({
+                                'Developer': list(analysis['developer_counts'].keys()),
+                                'Count': list(analysis['developer_counts'].values())
+                            }).sort_values('Count', ascending=False))
+                        
+                        # Display property listings
+                        st.subheader("Property Listings")
+                        
+                        # Format DataFrame for display
+                        display_df = analysis['dataframe'].copy()
+                        if 'price' in display_df.columns:
+                            display_df['price'] = display_df['price'].apply(lambda x: f"AED {x:,.0f}" if pd.notnull(x) else "N/A")
+                        if 'price_per_sqft' in display_df.columns:
+                            display_df['price_per_sqft'] = display_df['price_per_sqft'].apply(lambda x: f"AED {x:,.0f}" if pd.notnull(x) else "N/A")
+                        if 'area_sqft' in display_df.columns:
+                            display_df['area_sqft'] = display_df['area_sqft'].apply(lambda x: f"{x:,.0f} sq.ft" if pd.notnull(x) else "N/A")
+                            
+                        # Display the data
+                        st.dataframe(display_df)
+                        
+                        # Provide download link
+                        with open(csv_filepath, "rb") as file:
                             st.download_button(
-                                label=f"Download {project_to_export} Data",
-                                data=project_df.to_csv(index=False).encode('utf-8'),
-                                file_name=project_csv,
+                                label=f"Download {property_name} Data (CSV)",
+                                data=file,
+                                file_name=csv_filename,
                                 mime="text/csv"
                             )
+                else:
+                    st.error(f"No properties found for {property_name}. Please try another property name or area.")
+    
+    with tab2:
+        st.header("Compare Properties")
+        
+        property_list = st.text_input("Enter properties to compare (comma-separated)", "Damac Safa One, Damac Safa Two")
+        
+        if st.button("Generate Comparison"):
+            if property_list:
+                properties_to_compare = [p.strip() for p in property_list.split(",") if p.strip()]
+                
+                if len(properties_to_compare) < 2:
+                    st.warning("Please enter at least two properties to compare.")
+                else:
+                    with st.spinner("Generating property comparison..."):
+                        comparison = analyzer.get_property_comparison(properties_to_compare)
+                        st.markdown(comparison)
             else:
-                st.error(f"No properties found matching '{search_term}'. Try a different search term or check directly on Property Finder.")
-                st.info("Property Finder may be blocking automated search requests. Try searching on the Property Finder website directly.")
+                st.warning("Please enter properties to compare.")
+    
+    with tab3:
+        st.header("Get Investment Advice")
+        
+        property_for_advice = st.text_input("Enter property or area for investment advice", "Damac Safa Two")
+        budget = st.number_input("Your budget (AED)", min_value=0, value=2000000, step=100000)
+        
+        if st.button("Get Investment Advice"):
+            if property_for_advice:
+                with st.spinner("Generating investment advice..."):
+                    advice = analyzer.get_investment_advice(property_for_advice, budget if budget > 0 else None)
+                    st.markdown(advice)
+            else:
+                st.warning("Please enter a property or area.")
 
 if __name__ == "__main__":
     main()
