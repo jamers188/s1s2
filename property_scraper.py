@@ -1,17 +1,15 @@
 import streamlit as st
 import requests
-from bs4 import BeautifulSoup
 import pandas as pd
-import time
-import random
-from datetime import datetime
-import os
 import matplotlib.pyplot as plt
 import seaborn as sns
+from datetime import datetime
+import os
+import json
 
 # Page configuration
 st.set_page_config(
-    page_title="Damac Safa Property Analysis",
+    page_title="Property Finder Analysis Tool",
     page_icon="🏢",
     layout="wide"
 )
@@ -21,136 +19,152 @@ RESULTS_DIR = "results"
 if not os.path.exists(RESULTS_DIR):
     os.makedirs(RESULTS_DIR)
 
-class PropertyFinderScraper:
-    def __init__(self):
+class PropertyFinderAPI:
+    def __init__(self, api_key):
+        self.api_key = api_key
+        self.base_url = "https://api.propertyfinder.ae/v2"
         self.headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-            'Accept-Language': 'en-US,en;q=0.9',
-            'Accept-Encoding': 'gzip, deflate, br',
-            'Connection': 'keep-alive',
-            'Upgrade-Insecure-Requests': '1'
+            'Authorization': f'Bearer {self.api_key}',
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
         }
-        self.base_url = "https://www.propertyfinder.ae"
         self.results_dir = RESULTS_DIR
     
-    def get_search_url(self, project_name, page=1):
-        """Generate search URL for a specific project"""
-        # Format the project name for URL (replace spaces with hyphens and lowercase)
-        formatted_name = project_name.lower().replace(" ", "-")
-        return f"{self.base_url}/en/search?c=1&l=1&ob=nd&page={page}&q={formatted_name}"
-    
-    def fetch_page(self, url):
-        """Fetch and parse a page"""
-        try:
-            response = requests.get(url, headers=self.headers)
-            response.raise_for_status()
-            return BeautifulSoup(response.text, 'html.parser')
-        except requests.exceptions.RequestException as e:
-            st.error(f"Error fetching {url}: {e}")
-            return None
-    
-    def extract_property_details(self, property_element):
-        """Extract details from a property listing element"""
-        try:
-            # Extract price
-            price_element = property_element.select_one('.property-price')
-            price = price_element.text.strip() if price_element else "N/A"
-            price_value = self.clean_price(price)
-            
-            # Extract property type and bedrooms
-            property_facts = property_element.select_one('.property-facts')
-            bedrooms = "N/A"
-            property_type = "N/A"
-            if property_facts:
-                facts = property_facts.text.strip().split('\n')
-                facts = [f.strip() for f in facts if f.strip()]
-                if len(facts) >= 1:
-                    bedrooms = facts[0]
-                if len(facts) >= 2:
-                    property_type = facts[1]
-            
-            # Extract location
-            location_element = property_element.select_one('.property-location')
-            location = location_element.text.strip() if location_element else "N/A"
-            
-            # Extract title/description
-            title_element = property_element.select_one('.property-title')
-            title = title_element.text.strip() if title_element else "N/A"
-            
-            # Extract link
-            link_element = property_element.select_one('a.property-link')
-            link = self.base_url + link_element['href'] if link_element and 'href' in link_element.attrs else "N/A"
-            
-            return {
-                'title': title,
-                'price': price,
-                'price_value': price_value,
-                'bedrooms': bedrooms,
-                'property_type': property_type,
-                'location': location,
-                'link': link
-            }
-        except Exception as e:
-            st.warning(f"Error extracting property details: {e}")
-            return {}
-    
-    def clean_price(self, price_text):
-        """Convert price text to numeric value"""
-        try:
-            # Remove currency symbol, commas, and convert to float
-            price_digits = ''.join(c for c in price_text if c.isdigit() or c == '.')
-            if price_digits:
-                return float(price_digits)
-            return 0
-        except:
-            return 0
-    
-    def scrape_project(self, project_name, max_pages=3, progress_bar=None):
-        """Scrape all properties for a specific project"""
-        all_properties = []
+    def search_properties(self, query, location=None, property_type=None, min_price=None, max_price=None, bedrooms=None, page=1, limit=50):
+        """Search for properties using the API"""
+        endpoint = f"{self.base_url}/properties/search"
         
-        for page in range(1, max_pages + 1):
-            if progress_bar:
-                progress_bar.progress((page - 1) / max_pages)
-                
-            url = self.get_search_url(project_name, page)
-            soup = self.fetch_page(url)
+        # Build the query parameters
+        params = {
+            'q': query,
+            'page': page,
+            'limit': limit,
+            'sort': 'price_asc'  # Sort by price ascending
+        }
+        
+        # Add optional filters
+        if location:
+            params['location'] = location
+        if property_type:
+            params['property_type'] = property_type
+        if min_price:
+            params['price_min'] = min_price
+        if max_price:
+            params['price_max'] = max_price
+        if bedrooms:
+            params['bedrooms'] = bedrooms
             
-            if not soup:
-                continue
+        try:
+            response = requests.get(endpoint, headers=self.headers, params=params)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            st.error(f"API Error: {e}")
+            return {"data": [], "meta": {"total": 0}}
+    
+    def get_all_properties(self, query, location=None, property_type=None, min_price=None, max_price=None, bedrooms=None, max_pages=5, progress_bar=None):
+        """Get all properties matching search criteria, handling pagination"""
+        all_properties = []
+        page = 1
+        total_fetched = 0
+        total_available = None
+        
+        while page <= max_pages:
+            if progress_bar and total_available:
+                progress = min(total_fetched / total_available, 1.0) if total_available > 0 else 0
+                progress_bar.progress(progress)
+                
+            results = self.search_properties(
+                query, location, property_type, min_price, max_price, bedrooms, page=page
+            )
+            
+            if not results or not results.get('data'):
+                break
+                
+            properties = results.get('data', [])
+            all_properties.extend(properties)
+            
+            # Update totals for progress tracking
+            if not total_available and 'meta' in results and 'total' in results['meta']:
+                total_available = results['meta']['total']
+                
+            total_fetched += len(properties)
             
             # Check if we've reached the end of results
-            no_results = soup.select_one('.no-results-found')
-            if no_results or "No results found" in soup.text:
-                if page == 1:
-                    st.info(f"No results found for {project_name}")
-                else:
-                    st.info(f"Reached end of results for {project_name} at page {page}")
+            if 'meta' in results and 'next_page' in results['meta'] and not results['meta']['next_page']:
                 break
-            
-            # Extract property listings
-            property_listings = soup.select('.property-card')
-            
-            if not property_listings:
-                st.info(f"No property listings found on page {page} for {project_name}")
-                break
-            
-            for property_element in property_listings:
-                details = self.extract_property_details(property_element)
-                if details:
-                    details['project'] = project_name
-                    all_properties.append(details)
-            
-            # Add a small delay to avoid overloading the server
-            time.sleep(random.uniform(0.5, 1.5))
+                
+            page += 1
         
         if progress_bar:
             progress_bar.progress(1.0)
             
-        return all_properties
+        return all_properties, total_available
+    
+    def process_properties(self, properties):
+        """Process and extract relevant information from property data"""
+        processed_data = []
+        
+        for prop in properties:
+            # Extract basic property details
+            property_data = {
+                'id': prop.get('id', 'N/A'),
+                'title': prop.get('title', 'N/A'),
+                'price': prop.get('price', {}).get('amount', 0),
+                'currency': prop.get('price', {}).get('currency', 'AED'),
+                'property_type': prop.get('category', {}).get('name', 'N/A'),
+                'bedrooms': prop.get('bedrooms', 'N/A'),
+                'bathrooms': prop.get('bathrooms', 'N/A'),
+                'area_sqft': prop.get('size', {}).get('value', 0) if prop.get('size', {}) else 0,
+                'status': prop.get('status', 'N/A'),
+                'completion_status': prop.get('completion_status', 'N/A'),
+                'location': self._extract_location(prop),
+                'agent_name': self._extract_agent(prop),
+                'property_url': prop.get('share_url', 'N/A')
+            }
+            
+            # Calculate price per sqft if both values are available
+            if property_data['price'] and property_data['area_sqft']:
+                property_data['price_per_sqft'] = round(property_data['price'] / property_data['area_sqft'], 2)
+            else:
+                property_data['price_per_sqft'] = 0
+                
+            processed_data.append(property_data)
+            
+        return processed_data
+    
+    def _extract_location(self, property_data):
+        """Extract location information from property data"""
+        location = 'N/A'
+        
+        if 'location' in property_data:
+            loc_data = property_data['location']
+            if isinstance(loc_data, dict):
+                location_parts = []
+                if 'community' in loc_data and loc_data['community']:
+                    location_parts.append(loc_data['community'].get('name', ''))
+                if 'area' in loc_data and loc_data['area']:
+                    location_parts.append(loc_data['area'].get('name', ''))
+                if 'city' in loc_data and loc_data['city']:
+                    location_parts.append(loc_data['city'].get('name', ''))
+                    
+                location = ', '.join(filter(None, location_parts))
+        
+        return location
+    
+    def _extract_agent(self, property_data):
+        """Extract agent information from property data"""
+        agent = 'N/A'
+        
+        if 'agent' in property_data and property_data['agent']:
+            agent_data = property_data['agent']
+            if isinstance(agent_data, dict) and 'name' in agent_data:
+                agent = agent_data['name']
+                
+        return agent
     
     def analyze_data(self, properties_data):
-        """Analyze the scraped property data"""
+        """Analyze the property data"""
         if not properties_data:
             return None
         
@@ -159,10 +173,11 @@ class PropertyFinderScraper:
         # Basic statistics
         stats = {
             'total_listings': len(df),
-            'avg_price': df['price_value'].mean() if len(df) > 0 else 0,
-            'min_price': df['price_value'].min() if len(df) > 0 else 0,
-            'max_price': df['price_value'].max() if len(df) > 0 else 0,
-            'median_price': df['price_value'].median() if len(df) > 0 else 0
+            'avg_price': df['price'].mean() if len(df) > 0 else 0,
+            'min_price': df['price'].min() if len(df) > 0 else 0,
+            'max_price': df['price'].max() if len(df) > 0 else 0,
+            'median_price': df['price'].median() if len(df) > 0 else 0,
+            'avg_price_per_sqft': df['price_per_sqft'].mean() if 'price_per_sqft' in df.columns and len(df) > 0 else 0
         }
         
         # Count by property type
@@ -171,14 +186,22 @@ class PropertyFinderScraper:
         # Count by bedroom
         bedroom_counts = df['bedrooms'].value_counts().to_dict() if len(df) > 0 else {}
         
+        # Count by agent
+        agent_counts = df['agent_name'].value_counts().to_dict() if len(df) > 0 else {}
+        
+        # Get top 5 agents
+        top_agents = {k: agent_counts[k] for k in list(agent_counts.keys())[:5]} if agent_counts else {}
+        
         return {
             'dataframe': df,
             'stats': stats,
             'property_type_counts': property_type_counts,
-            'bedroom_counts': bedroom_counts
+            'bedroom_counts': bedroom_counts,
+            'agent_counts': agent_counts,
+            'top_agents': top_agents
         }
     
-    def generate_visualizations(self, analysis_results, project_name):
+    def generate_visualizations(self, analysis_results, query):
         """Generate visualizations for the analysis results"""
         if not analysis_results or len(analysis_results['dataframe']) == 0:
             return {}
@@ -192,8 +215,8 @@ class PropertyFinderScraper:
         # Price distribution
         try:
             fig_price, ax_price = plt.subplots(figsize=(10, 5))
-            sns.histplot(df['price_value'], kde=True, ax=ax_price)
-            ax_price.set_title(f'Price Distribution for {project_name}')
+            sns.histplot(df['price'], kde=True, ax=ax_price)
+            ax_price.set_title(f'Price Distribution for {query}')
             ax_price.set_xlabel('Price (AED)')
             ax_price.set_ylabel('Count')
             plt.tight_layout()
@@ -207,7 +230,7 @@ class PropertyFinderScraper:
                 fig_type, ax_type = plt.subplots(figsize=(10, 5))
                 property_type_counts = df['property_type'].value_counts()
                 property_type_counts.plot(kind='bar', ax=ax_type)
-                ax_type.set_title(f'Property Types for {project_name}')
+                ax_type.set_title(f'Property Types for {query}')
                 ax_type.set_xlabel('Property Type')
                 ax_type.set_ylabel('Count')
                 plt.xticks(rotation=45)
@@ -218,11 +241,11 @@ class PropertyFinderScraper:
         
         # Bedroom distribution
         try:
-            if len(df['bedrooms'].unique()) > 1:
+            if 'bedrooms' in df.columns and len(df['bedrooms'].unique()) > 1:
                 fig_bed, ax_bed = plt.subplots(figsize=(10, 5))
-                bedroom_counts = df['bedrooms'].value_counts()
+                bedroom_counts = df['bedrooms'].value_counts().sort_index()
                 bedroom_counts.plot(kind='bar', ax=ax_bed)
-                ax_bed.set_title(f'Bedroom Distribution for {project_name}')
+                ax_bed.set_title(f'Bedroom Distribution for {query}')
                 ax_bed.set_xlabel('Bedrooms')
                 ax_bed.set_ylabel('Count')
                 plt.xticks(rotation=45)
@@ -231,16 +254,46 @@ class PropertyFinderScraper:
         except Exception as e:
             st.error(f"Error generating bedroom chart: {e}")
         
+        # Price per square foot
+        try:
+            if 'price_per_sqft' in df.columns and df['price_per_sqft'].sum() > 0:
+                fig_sqft, ax_sqft = plt.subplots(figsize=(10, 5))
+                df_filtered = df[df['price_per_sqft'] > 0]  # Filter out zeros
+                sns.histplot(df_filtered['price_per_sqft'], kde=True, ax=ax_sqft)
+                ax_sqft.set_title(f'Price per Sq.Ft Distribution for {query}')
+                ax_sqft.set_xlabel('Price per Sq.Ft (AED)')
+                ax_sqft.set_ylabel('Count')
+                plt.tight_layout()
+                figures['price_per_sqft'] = fig_sqft
+        except Exception as e:
+            st.error(f"Error generating price per sqft chart: {e}")
+        
+        # Top agents
+        try:
+            if 'agent_name' in df.columns and len(df['agent_name'].unique()) > 1:
+                fig_agent, ax_agent = plt.subplots(figsize=(10, 5))
+                agent_counts = df['agent_name'].value_counts().head(10)  # Top 10 agents
+                agent_counts.plot(kind='bar', ax=ax_agent)
+                ax_agent.set_title(f'Top 10 Agents for {query}')
+                ax_agent.set_xlabel('Agent')
+                ax_agent.set_ylabel('Number of Listings')
+                plt.xticks(rotation=45)
+                plt.tight_layout()
+                figures['top_agents'] = fig_agent
+        except Exception as e:
+            st.error(f"Error generating agent chart: {e}")
+        
         return figures
     
-    def save_results(self, properties_data, project_name):
-        """Save the scraped data to a CSV file"""
+    def save_results(self, properties_data, query):
+        """Save the property data to a CSV file"""
         if not properties_data:
             return None
         
         df = pd.DataFrame(properties_data)
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        filename = f"{project_name}_properties_{timestamp}.csv"
+        query_safe = query.replace(" ", "_").replace("/", "_").lower()
+        filename = f"{query_safe}_properties_{timestamp}.csv"
         filepath = os.path.join(self.results_dir, filename)
         df.to_csv(filepath, index=False)
         
@@ -248,117 +301,182 @@ class PropertyFinderScraper:
 
 # Streamlit app
 def main():
-    st.title("Damac Safa Property Analysis")
-    st.markdown("### Check inventory and prices for Damac Safa One and Safa Two on Property Finder")
+    st.title("Property Finder Analysis Tool")
+    st.markdown("### Search for properties and analyze market trends")
+    
+    # API key input (you would normally store this securely)
+    api_key = st.text_input("Enter your Property Finder API Key", type="password")
+    
+    if not api_key:
+        st.warning("Please enter your Property Finder API key to continue.")
+        st.markdown("""
+        Don't have an API key? 
+        
+        1. Visit the [Property Finder Developer Portal](https://developers.propertyfinder.ae/)
+        2. Sign up for an account
+        3. Create a new application to get your API key
+        """)
+        return
+    
+    # Initialize API client
+    property_finder = PropertyFinderAPI(api_key)
     
     with st.expander("About This Tool", expanded=True):
         st.markdown("""
-        This application scrapes property listings for Damac Safa One and Safa Two from Property Finder and provides analysis of:
+        This application uses the Property Finder API to search for properties and provide analytics including:
         - Total available inventory (number of listings)
         - Price statistics (average, minimum, maximum, median)
+        - Price per square foot analysis
         - Breakdown by property type
         - Breakdown by number of bedrooms
-        - Visualizations of key data points
+        - Top agents with the most listings
+        - Detailed property data for further analysis
         
-        The data is updated each time you run the analysis.
+        The data is updated each time you run a search.
         """)
     
-    # Project selection
-    st.subheader("Select Projects to Analyze")
-    col1, col2 = st.columns(2)
-    with col1:
-        analyze_safa_one = st.checkbox("Safa One", value=True)
-    with col2:
-        analyze_safa_two = st.checkbox("Safa Two", value=True)
+    # Create form for search parameters
+    with st.form("search_form"):
+        st.subheader("Search Parameters")
+        
+        # Main search query
+        query = st.text_input("Search Query (e.g., 'Damac Safa One', 'Palm Jumeirah')", "Damac Safa")
+        
+        # Create columns for filters
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            location = st.text_input("Location (optional)", "")
+            min_price = st.number_input("Minimum Price (AED)", value=0, min_value=0, step=100000)
+            bedrooms = st.selectbox("Bedrooms", ["Any", "Studio", "1", "2", "3", "4", "5+"])
+        
+        with col2:
+            property_type = st.selectbox("Property Type", ["Any", "Apartment", "Villa", "Townhouse", "Penthouse", "Duplex"])
+            max_price = st.number_input("Maximum Price (AED)", value=0, min_value=0, step=100000)
+            max_pages = st.slider("Maximum Pages to Fetch", min_value=1, max_value=10, value=3, 
+                                help="Each page contains up to 50 properties. Increasing this will fetch more properties but may take longer.")
+        
+        search_button = st.form_submit_button("Search Properties", type="primary")
     
-    projects = []
-    if analyze_safa_one:
-        projects.append("Safa One")
-    if analyze_safa_two:
-        projects.append("Safa Two")
+    # Clean up inputs
+    if property_type == "Any":
+        property_type = None
+    if bedrooms == "Any":
+        bedrooms = None
+    elif bedrooms == "Studio":
+        bedrooms = "0"
+    elif bedrooms == "5+":
+        bedrooms = "5"
     
-    # Start analysis button
-    if st.button("Start Analysis", type="primary"):
-        if not projects:
-            st.warning("Please select at least one project to analyze.")
-        else:
-            scraper = PropertyFinderScraper()
+    if min_price == 0:
+        min_price = None
+    if max_price == 0:
+        max_price = None
+    
+    # Execute search when button is clicked
+    if search_button and query:
+        with st.spinner(f"Searching for properties matching '{query}'..."):
+            st.subheader(f"Analyzing Properties: {query}")
+            progress_bar = st.progress(0)
             
-            all_results = {}
+            # Get properties from API
+            properties, total_available = property_finder.get_all_properties(
+                query, location, property_type, min_price, max_price, bedrooms, max_pages, progress_bar
+            )
             
-            for project in projects:
-                with st.spinner(f"Scraping data for {project}..."):
-                    st.subheader(f"Analyzing {project}")
-                    progress_bar = st.progress(0)
-                    
-                    # Scrape data
-                    properties = scraper.scrape_project(project, progress_bar=progress_bar)
-                    
-                    if properties:
-                        st.success(f"Found {len(properties)} listings for {project}")
-                        
-                        # Save data
-                        csv_filename, csv_filepath = scraper.save_results(properties, project)
-                        
-                        # Analyze data
-                        analysis = scraper.analyze_data(properties)
-                        
-                        if analysis:
-                            # Display summary statistics
-                            st.subheader("Summary Statistics")
-                            stats_col1, stats_col2, stats_col3, stats_col4 = st.columns(4)
-                            with stats_col1:
-                                st.metric("Total Listings", analysis['stats']['total_listings'])
-                            with stats_col2:
-                                st.metric("Average Price", f"AED {analysis['stats']['avg_price']:,.2f}")
-                            with stats_col3:
-                                st.metric("Minimum Price", f"AED {analysis['stats']['min_price']:,.2f}")
-                            with stats_col4:
-                                st.metric("Maximum Price", f"AED {analysis['stats']['max_price']:,.2f}")
-                            
-                            # Generate and display visualizations
-                            figures = scraper.generate_visualizations(analysis, project)
-                            
-                            if figures:
-                                st.subheader("Visualizations")
-                                viz_cols = st.columns(len(figures))
-                                
-                                for i, (viz_type, fig) in enumerate(figures.items()):
-                                    with viz_cols[i]:
-                                        st.pyplot(fig)
-                            
-                            # Display property data table
-                            st.subheader("Property Listings")
-                            st.dataframe(analysis['dataframe'])
-                            
-                            # Provide download link
-                            with open(csv_filepath, "rb") as file:
-                                st.download_button(
-                                    label=f"Download {project} Data",
-                                    data=file,
-                                    file_name=csv_filename,
-                                    mime="text/csv",
-                                )
-                            
-                            # Store results for comparison
-                            all_results[project] = analysis
-                    else:
-                        st.error(f"No data found for {project}")
-            
-            # Compare projects if we have multiple
-            if len(all_results) > 1:
-                st.header("Projects Comparison")
-                comparison_data = {}
+            if properties:
+                st.success(f"Found {len(properties)} listings out of {total_available} total available")
                 
-                for project, analysis in all_results.items():
-                    comparison_data[project] = {
-                        "Total Listings": analysis['stats']['total_listings'],
-                        "Average Price (AED)": analysis['stats']['avg_price'],
-                        "Median Price (AED)": analysis['stats']['median_price'],
-                    }
+                # Process property data
+                processed_properties = property_finder.process_properties(properties)
                 
-                comparison_df = pd.DataFrame(comparison_data)
-                st.dataframe(comparison_df)
+                # Save data
+                csv_filename, csv_filepath = property_finder.save_results(processed_properties, query)
+                
+                # Analyze data
+                analysis = property_finder.analyze_data(processed_properties)
+                
+                if analysis:
+                    # Display summary statistics
+                    st.subheader("Summary Statistics")
+                    stats_col1, stats_col2, stats_col3, stats_col4, stats_col5 = st.columns(5)
+                    with stats_col1:
+                        st.metric("Total Listings", analysis['stats']['total_listings'])
+                    with stats_col2:
+                        st.metric("Average Price", f"AED {analysis['stats']['avg_price']:,.2f}")
+                    with stats_col3:
+                        st.metric("Minimum Price", f"AED {analysis['stats']['min_price']:,.2f}")
+                    with stats_col4:
+                        st.metric("Maximum Price", f"AED {analysis['stats']['max_price']:,.2f}")
+                    with stats_col5:
+                        st.metric("Avg Price/Sq.Ft", f"AED {analysis['stats']['avg_price_per_sqft']:,.2f}")
+                    
+                    # Display property type breakdown
+                    st.subheader("Property Types")
+                    st.write(pd.DataFrame({
+                        'Property Type': list(analysis['property_type_counts'].keys()),
+                        'Count': list(analysis['property_type_counts'].values())
+                    }).sort_values('Count', ascending=False))
+                    
+                    # Display bedroom breakdown
+                    st.subheader("Bedroom Distribution")
+                    st.write(pd.DataFrame({
+                        'Bedrooms': list(analysis['bedroom_counts'].keys()),
+                        'Count': list(analysis['bedroom_counts'].values())
+                    }).sort_values('Bedrooms'))
+                    
+                    # Display top agents
+                    st.subheader("Top Agents")
+                    st.write(pd.DataFrame({
+                        'Agent': list(analysis['top_agents'].keys()),
+                        'Number of Listings': list(analysis['top_agents'].values())
+                    }))
+                    
+                    # Generate and display visualizations
+                    figures = property_finder.generate_visualizations(analysis, query)
+                    
+                    if figures:
+                        st.subheader("Visualizations")
+                        
+                        # Use two columns for the charts
+                        for i in range(0, len(figures), 2):
+                            cols = st.columns(2)
+                            
+                            # First chart
+                            fig_keys = list(figures.keys())
+                            if i < len(fig_keys):
+                                with cols[0]:
+                                    key1 = fig_keys[i]
+                                    st.pyplot(figures[key1])
+                            
+                            # Second chart
+                            if i + 1 < len(fig_keys):
+                                with cols[1]:
+                                    key2 = fig_keys[i + 1]
+                                    st.pyplot(figures[key2])
+                    
+                    # Display property data table
+                    st.subheader("Property Listings")
+                    
+                    # Select columns to display
+                    display_cols = ['title', 'price', 'area_sqft', 'price_per_sqft', 'bedrooms', 
+                                   'bathrooms', 'property_type', 'location', 'agent_name', 'property_url']
+                    
+                    # Ensure all columns exist in the dataframe
+                    available_cols = [col for col in display_cols if col in analysis['dataframe'].columns]
+                    
+                    st.dataframe(analysis['dataframe'][available_cols])
+                    
+                    # Provide download link
+                    with open(csv_filepath, "rb") as file:
+                        st.download_button(
+                            label=f"Download Complete Data (CSV)",
+                            data=file,
+                            file_name=csv_filename,
+                            mime="text/csv",
+                        )
+            else:
+                st.error(f"No data found for '{query}'. Try adjusting your search parameters.")
 
 if __name__ == "__main__":
     main()
