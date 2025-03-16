@@ -1,8 +1,7 @@
-streamlit 
-pandas 
-matplotlib 
-seaborn 
-openai 
-python-dotenv 
-requests 
+streamlit
+pandas
+matplotlib
+seaborn
 numpy
+plotly
+statsmodels
