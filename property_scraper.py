@@ -240,7 +240,6 @@ PROJECT_INFO = {
         "developer": "Damac Properties",
         "delivery_date": "Q2 2026",
         "sales_started": "September 2022",
-        "construction_progress": "5.86%",
         "payment_plan": "20/40/40",
         "description": "Safa One by de GRISOGONO is an ultra-luxury residential project featuring one of the highest hanging gardens in the world. Located in the prestigious Al Safa area along Sheikh Zayed Road, it offers stunning views of Burj Al Arab, Palm Jumeirah, and Dubai's iconic skyline.",
         "features": ["Hanging gardens", "Infinity pool", "Luxury spa", "Private beach access", "24/7 concierge", "Smart home technology", "Branded interiors by de GRISOGONO"]
@@ -250,7 +249,6 @@ PROJECT_INFO = {
         "developer": "Damac Properties",
         "delivery_date": "Q2 2027",
         "sales_started": "March 2023",
-        "construction_progress": "3.25%",
         "payment_plan": "20/55/25",
         "description": "Safa Two is a luxury residential development in Business Bay featuring de GRISOGONO interiors. The twin-tower project offers premium units with breathtaking views of Dubai Canal, Burj Khalifa, and the city skyline.",
         "features": ["Luxury branded residences", "Premium views", "Infinity pools", "Spa and wellness center", "Fitness facilities", "Kids play area", "De GRISOGONO interiors"]
@@ -349,7 +347,6 @@ def display_project_info(project, project_data):
             <p><span class="highlight">Location:</span> {project_data['location']}</p>
             <p><span class="highlight">Developer:</span> {project_data['developer']}</p>
             <p><span class="highlight">Expected Delivery:</span> {project_data['delivery_date']}</p>
-            <p><span class="highlight">Construction Progress:</span> {project_data['construction_progress']}</p>
             <p><span class="highlight">Payment Plan:</span> {project_data['payment_plan']}</p>
         </div>
         """, unsafe_allow_html=True)
@@ -604,7 +601,6 @@ def display_comparison(safa_one_analysis, safa_two_analysis):
     investment_data = {
         'Metric': [
             'Expected Delivery', 
-            'Construction Progress', 
             'Payment Plan',
             'Avg. 1BR Price',
             'Avg. 2BR Price',
@@ -614,7 +610,6 @@ def display_comparison(safa_one_analysis, safa_two_analysis):
         ],
         'Safa One': [
             PROJECT_INFO['Safa One']['delivery_date'],
-            PROJECT_INFO['Safa One']['construction_progress'],
             PROJECT_INFO['Safa One']['payment_plan'],
             format_currency(safa_one_analysis['bedroom_stats'].loc[safa_one_analysis['bedroom_stats']['bedrooms'] == '1', 'avg_price'].values[0]),
             format_currency(safa_one_analysis['bedroom_stats'].loc[safa_one_analysis['bedroom_stats']['bedrooms'] == '2', 'avg_price'].values[0]),
@@ -624,7 +619,6 @@ def display_comparison(safa_one_analysis, safa_two_analysis):
         ],
         'Safa Two': [
             PROJECT_INFO['Safa Two']['delivery_date'],
-            PROJECT_INFO['Safa Two']['construction_progress'],
             PROJECT_INFO['Safa Two']['payment_plan'],
             format_currency(safa_two_analysis['bedroom_stats'].loc[safa_two_analysis['bedroom_stats']['bedrooms'] == '1', 'avg_price'].values[0]),
             format_currency(safa_two_analysis['bedroom_stats'].loc[safa_two_analysis['bedroom_stats']['bedrooms'] == '2', 'avg_price'].values[0]),
